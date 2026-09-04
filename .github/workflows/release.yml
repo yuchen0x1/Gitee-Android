@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Git tag to publish'
+        required: true
+        default: 'v2.0.2'
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+      - name: Check tag and app version
+        shell: bash
+        run: |
+          test "${RELEASE_TAG#v}" = "$(sed -n 's/^version: //p' pubspec.yaml | cut -d+ -f1)"
+
+  android:
+    name: Android packages
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - uses: android-actions/setup-android@v3
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - run: flutter build apk --release --split-per-abi
+      - run: flutter build appbundle --release
+      - name: Prepare Android assets
+        shell: bash
+        run: |
+          mkdir -p release-assets
+          cp build/app/outputs/flutter-apk/app-release.apk release-assets/gitee-client-${RELEASE_TAG}-android-universal.apk
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk release-assets/gitee-client-${RELEASE_TAG}-android-armeabi-v7a.apk
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk release-assets/gitee-client-${RELEASE_TAG}-android-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk release-assets/gitee-client-${RELEASE_TAG}-android-x86_64.apk
+          cp build/app/outputs/bundle/release/app-release.aab release-assets/gitee-client-${RELEASE_TAG}-android.aab
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-assets
+          path: release-assets/*
+
+  windows:
+    name: Windows desktop package
+    needs: validate
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter config --enable-windows-desktop
+      - run: flutter pub get
+      - run: flutter build windows --release
+      - name: Package Windows application
+        shell: pwsh
+        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "gitee-client-${env:RELEASE_TAG}-windows-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-assets
+          path: gitee-client-*-windows-x64.zip
+
+  publish:
+    name: Publish GitHub Release
+    needs: [validate, android, windows]
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-release-assets'
+          merge-multiple: true
+          path: release-assets
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${RELEASE_TAG}" release-assets/* --repo "${GITHUB_REPOSITORY}" --title "Gitee Client ${RELEASE_TAG}" --verify-tag --generate-notes

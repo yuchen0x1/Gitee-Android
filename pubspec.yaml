@@ -1,0 +1,30 @@
+name: gitee_client
+description: A pure Gitee client built with Flutter.
+publish_to: 'none'
+version: 2.0.2+5
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^9.2.4
+  markdown_widget: ^2.3.2
+  cached_network_image: ^3.3.1
+  url_launcher: ^6.2.5
+  shimmer: ^3.0.0
+  local_auth: ^3.0.2
+  highlight: ^0.7.0
+  app_links: ^7.2.1
+  package_info_plus: ^9.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
