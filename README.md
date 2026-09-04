@@ -1,102 +1,116 @@
 # Gitee Client
 
-> **把码云装进口袋** —— 码云在手，协作不愁。刷通知、翻代码、回 Issue、审 PR，一部手机全搞定。
+> 基于 Flutter 打造的 Gitee（码云）非官方客户端 —— 在手机上刷通知、读代码、回 Issue、审 PR。
 
-本项目是一个使用 Flutter 与 Material 3 构建的 Gitee（码云）非官方移动客户端。
+![Release](https://img.shields.io/gitee/v/yuchen0x1/gitee-mobile-client) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Windows-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
 
-> 郑重说明：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力为开发者提供便利。
+> **声明**：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力（Open API v5）为开发者提供便利。
 
-## 一、这个项目解决什么
+## 项目简介
 
-Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果你需要在通勤、出差或碎片时间里跟进仓库动态、回复 Issue、审阅 Pull Request，又不想打开浏览器或桌面 IDE，它就是为此准备的。
+Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机和桌面上。如果你需要在通勤、出差或碎片时间里跟进仓库动态、回复 Issue、审阅 Pull Request，又不想打开浏览器或桌面 IDE，它就是为此准备的。
 
-它特别适合这些时刻：
+所有请求都直接使用你自己的 Gitee 凭证（私人令牌或 OAuth 访问令牌）访问 Gitee 官方 API，项目不依赖任何自建后端，不内置代理账号，令牌保存在系统安全存储中。
 
-- 通勤路上快速查看个人仓库、Star 仓库、订阅仓库和组织仓库；
-- 利用碎片时间阅读 README、文件内容、提交记录、Issue、PR 和通知；
-- 出门在外处理仓库事务：Star、订阅、Fork、创建 Issue、创建 PR、管理协作者、Webhook、Release、Tag，仓库详情页一站搞定；
-- 在意账号安全又有多账号需求的开发者：私人令牌登录配合系统安全存储，降低明文泄露风险；
-- 希望把冗长的 Issue / PR 浓缩成中文摘要，可选接入 OpenAI 兼容接口（默认 DeepSeek API 地址）。
+适用场景：
 
-## 二、功能总览
+- 通勤路上查看仓库动态、通知和事件流；
+- 碎片时间阅读 README、源码、提交记录、Issue 和 PR；
+- 出门在外处理仓库事务：Star、订阅、Fork、创建 Issue / PR、管理文件、Webhook、Release；
+- 多账号开发者在多台设备间安全切换账号。
 
-| 模块 | 能力一览 |
-| --- | --- |
-| 账号与安全 | 使用 Gitee 私人令牌登录；令牌通过 Authorization 请求头传递，不写入 URL 或表单正文；令牌保存在 flutter_secure_storage，旧版明文令牌自动迁移并清理；支持账号管理、多账号切换、退出登录；支持深色模式、生物识别解锁、图片缓存清理 |
-| 仓库与代码 | 浏览个人仓库、Star 仓库、订阅仓库、组织仓库和用户公开仓库；搜索仓库、用户和 Issue；查看仓库详情、README、目录、文件内容、分支、标签、提交记录和提交详情；查看代码文件，支持 Markdown 渲染、图片缓存和代码高亮；Star / Unstar、订阅 / 取消订阅、Fork 仓库；创建仓库，创建、编辑和删除仓库文件；管理分支保护、协作者、Webhook、Release、Tag、Fork、贡献者、语言统计和许可证信息 |
-| Issue 与 Pull Request | 查看、搜索、筛选、创建和更新 Issue；查看、创建、编辑和删除 Issue 评论；查看、创建、关闭、重新打开和合并 Pull Request；查看 PR 提交、文件变更、评论和操作日志；管理 PR 审查人员、测试人员及审查状态；可选使用 AI 摘要服务快速理解 Issue / PR 内容 |
-| 动态与通知 | 查看通知、未读数量、仓库动态、用户动态和接收事件；标记单条通知或全部通知为已读；查看关注、粉丝、组织成员和组织仓库；关注 / 取消关注用户 |
-| 移动端体验 | Material 3 风格界面，支持明暗主题；半透明玻璃质感面板、背景模糊、细边框与分层阴影；底部导航、下拉刷新、分页加载、错误状态、空状态和骨架屏；支持 Android 深链入口 |
+## 功能特性
 
-## 三、三步跑起来
+**账号与安全**
 
-### 第一步：备好环境
+- 私人令牌登录，或通过系统浏览器完成 Gitee OAuth 授权登录（账号密码只在 Gitee 页面输入）；
+- 令牌保存在系统安全存储（flutter_secure_storage），旧版明文令牌自动迁移并清理；
+- 多账号管理与一键切换；OAuth 令牌过期自动刷新；
+- 生物识别解锁（指纹 / 面容），可在设置中开关。
+
+**仓库与代码**
+
+- 浏览个人仓库、Star 仓库、订阅仓库、组织仓库和任意用户公开仓库；
+- 搜索仓库、用户和 Issue（含搜索历史）；
+- 查看仓库详情、README、文件目录、文件内容、分支、标签、提交记录和提交详情；
+- Markdown 渲染、代码语法高亮、图片缓存；
+- Star / 取消 Star、订阅 / 取消订阅、Fork 仓库；
+- 创建个人仓库和组织仓库；创建、编辑、删除仓库文件；
+- 管理分支保护、协作者、Webhook（增删改 / 测试）、Tag 和 Release（创建 / 编辑 / 删除）。
+
+**Issue 与 Pull Request**
+
+- Issue：查看、搜索、筛选、创建、更新，评论的新增 / 编辑 / 删除；
+- PR：查看、创建、评论、关闭、重新打开、合并；
+- 查看 PR 提交列表、文件变更和操作日志；管理审查人员与测试人员。
+
+**动态与通知**
+
+- 通知列表、未读计数、单条 / 全部标记已读；
+- 用户动态、接收事件、仓库事件流；
+- 关注 / 取消关注用户，查看关注与粉丝列表；组织和组织成员管理。
+
+**体验细节**
+
+- Material 3 界面，明暗主题跟随设置；
+- 下拉刷新、分页加载、骨架屏、空状态与错误状态；
+- Android 深链入口（`gitee://` scheme）。
+
+## 支持平台
+
+| 平台 | 形态 | 获取方式 |
+| --- | --- | --- |
+| Android | 通用 APK、分架构 APK、App Bundle | [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) |
+| Windows | x64 便携版 ZIP（免安装） | [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) |
+
+## 系统要求
+
+从源码构建需要：
 
 | 依赖 | 版本 / 说明 |
 | --- | --- |
-| Flutter | 3.x |
-| Dart | 3.x |
-| JDK | 17 |
-| IDE / SDK | Android Studio 或已配置的 Android SDK |
-| 设备 | Android 真机或模拟器 |
+| Flutter | 3.x（stable 渠道） |
+| Dart SDK | >=3.0.0 <4.0.0（随 Flutter 附带） |
+| JDK | 17（Android 构建需要） |
+| Android SDK | 通过 Android Studio 或命令行工具安装（Android 构建需要） |
+| Visual C++ 工具链 | 含 CMake 与 Windows SDK（Windows 构建需要） |
 
-环境装好后，先给本机做个体检：
+装好后先自检：
 
 ```bash
 flutter doctor -v
 flutter devices
 ```
 
-### 第二步：拉代码、装依赖
+## 快速开始
 
 ```bash
+# 1. 克隆仓库
 git clone https://gitee.com/yuchen0x1/gitee-mobile-client.git
-cd gitee-app
+cd gitee-mobile-client
+
+# 2. 安装依赖
 flutter pub get
-```
 
-> 手头已经有本仓库源码？跳过克隆，直接进入项目根目录执行 `flutter pub get` 即可。
-
-### 第三步：运行或打包
-
-```bash
-# 使用默认连接设备运行
+# 3. 连接设备后运行（Android 真机或模拟器）
 flutter run
-
-# 指定 Android 模拟器或设备运行
-flutter run -d emulator-5554
 ```
 
-需要安装包时：
+只想直接使用？前往 [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) 下载安装包，无需配置任何环境。
 
-```bash
-# Debug 包
-flutter build apk --debug
+## 登录配置
 
-# Release 包
-flutter build apk --release
-```
+应用启动后进入登录页，支持两种方式：
 
-Release APK 默认输出位置：`build/app/outputs/flutter-apk/app-release.apk`。
+**方式一：私人令牌登录（开箱即用）**
 
-## 四、版本与更新
+1. 在 Gitee「设置 → 安全设置 → 私人令牌」中[生成令牌](https://gitee.com/profile/personal_access_tokens)，按需勾选 projects、issues、pull_requests、notifications 等权限；
+2. 把令牌粘贴进应用登录页即可。所有请求通过 `Authorization` 请求头携带令牌，不写入 URL。
 
-正式版安装包（Windows 桌面便携版、Android 通用 APK、各 Android 架构 APK 以及 Android App Bundle）统一通过仓库 Releases 页面分发，可前往 <https://gitee.com/yuchen0x1/gitee-mobile-client/releases> 下载；推送 `v*` 标签会自动构建并创建新的 Release。
+**方式二：Gitee 账号 OAuth 登录（需构建时注入配置）**
 
-应用内置了更新检查：登录进入主页后会自动检查新版本，也可以在「我的」→「设置」→「检查更新」手动检查。发现新版本后，Android 会打开通用 APK 下载，Windows 会打开 x64 便携 ZIP 下载，其他平台会打开 Release 页面。
-
-更新检查默认先访问 Gitee 公开 Release，失败或限流时自动回退 GitHub；检查过程不需要登录，不会发送 Gitee Token。检查结果会在应用进程内缓存 10 分钟，手动检查会强制刷新。
-
-发布新版本时，请同步提升 `pubspec.yaml` 的版本号并推送对应的 `v*` 标签（例如 `2.0.0` 与 `v2.0.0`），这样客户端才能正确识别更新。
-
-## 五、登录与日常使用
-
-应用支持两种登录方式：
-
-1. **Gitee 账号密码登录（OAuth）**：登录页点击「使用 Gitee 账号登录」后，应用会在系统浏览器中打开 Gitee 官方授权页。账号和密码只在 Gitee 页面输入，不会经过本应用，也不会被保存；授权完成后通过 `gitee://oauth/callback` 返回应用。OAuth 登录需要先在 Gitee 创建 OAuth 应用，并将回调地址设置为 `gitee://oauth/callback`。
-2. **私人令牌登录**：在 Gitee 账号设置中创建私人令牌，并按需授予仓库、Issue、Pull Request、通知、组织等权限。应用不内置任何后台账号或默认密码，所有请求都使用你输入的 Gitee 私人令牌访问 Gitee Open API v5。
-
-OAuth 配置通过构建参数注入，不要把真实密钥提交到仓库：
+1. 在 Gitee「设置 → 第三方应用 → 创建应用」中创建 OAuth 应用，回调地址填 `gitee://oauth/callback`；
+2. 用构建参数注入 `client_id` / `client_secret` 后再运行或打包：
 
 ```bash
 flutter run \
@@ -105,74 +119,138 @@ flutter run \
   --dart-define=GITEE_REDIRECT_URI=gitee://oauth/callback
 ```
 
-`GITEE_CLIENT_SECRET` 会随移动端构建产物存在，无法视为真正的秘密。当前默认回调使用 Android 自定义 scheme `gitee://oauth/callback`，其他应用可能注册同名 scheme 并拦截回调，因此更适合个人构建或内测。正式发布时建议由自有后端完成 authorization code 换 token，并改用 Android App Links/对应平台的 Universal Links；客户端只接收短期访问令牌。
+| 环境变量 | 必填 | 默认值 | 说明 |
+| --- | --- | --- | --- |
+| `GITEE_CLIENT_ID` | OAuth 登录必填 | 无 | Gitee OAuth 应用的 Client ID |
+| `GITEE_CLIENT_SECRET` | OAuth 登录必填 | 无 | Gitee OAuth 应用的 Client Secret |
+| `GITEE_REDIRECT_URI` | 可选 | `gitee://oauth/callback` | OAuth 回调地址，需与 OAuth 应用配置一致 |
 
-3. **登录后**：应用会读取当前用户资料并进入主页。OAuth access token 和 refresh token 使用系统安全存储保存，启动时会在过期后尝试刷新；应用不会保存账号密码。
-4. **浏览与搜索**：主页底部导航包含动态、仓库、搜索、我的等入口：
-   - 在「动态」查看通知、未读数量和事件流；
-   - 在「仓库」浏览个人仓库列表；
-   - 在「搜索」查找仓库、用户或 Issue；
-   - 在「我的」查看账号信息、Star 仓库、关注、粉丝、组织、订阅、我的 Issue 和设置项。
-5. **管理仓库协作**：进入仓库详情页后，可以查看 README、文件目录、提交、Issue、PR、Release 等信息；也可以执行 Star、订阅、Fork、创建 Issue、创建 PR、创建/编辑文件、分支保护、协作者、Webhook、Tag 等操作。部分写入类操作需要令牌具备对应权限。
+> **安全须知**：`GITEE_CLIENT_SECRET` 会随移动端构建产物分发，无法视为真正的秘密，且回调使用自定义 scheme，可能被注册同名 scheme 的其他应用拦截。因此 OAuth 登录更适合个人构建或内测环境；生产分发建议由自有后端完成授权码换令牌，并改用 Android App Links 等域名校验机制。不要把真实密钥提交到仓库。
 
-## 六、AI 摘要（可选）
+## 使用说明
 
-在「我的」→「AI 设置」中填写 OpenAI 兼容接口的 API Key 即可启用。默认摘要服务使用 DeepSeek Chat 接口格式；如需适配其他兼容服务，可在代码中调整 `AiSummary.baseUrl` 和 `AiSummary.model`。
+登录成功后进入主页，底部导航包含四个入口：
 
-## 七、典型操作一览
+- **动态**：通知（含未读计数）、事件流；
+- **仓库**：个人 / Star / 订阅 / 组织仓库列表；
+- **搜索**：仓库、用户、Issue 全局搜索；
+- **我的**：账号信息、关注 / 粉丝、组织、我的 Issue，以及全部设置项。
 
-以下示例均为演示数据，不包含真实令牌或真实私密数据。
+常用设置（「我的 → 设置」）：
 
-| 场景 | 你的操作 | 应用反馈 |
-| --- | --- | --- |
-| 登录 | 在 Gitee 官方授权页完成账号密码登录，或输入私人令牌 `<your_gitee_private_token>` | 登录成功进入主页，显示当前 Gitee 用户头像、用户名、仓库数、关注数、粉丝数 |
-| 搜索仓库 | 搜索类型选“仓库”，关键词 `flutter`，第 1 页每页 20 条 | 返回仓库列表：owner/repo-name、仓库描述、Star 数、Fork 数、主要语言、更新时间 |
-| 查看仓库文件 | 定位仓库 owner/repo，分支 main，路径 README.md | 渲染后的 README 内容；代码 / 文本文件内容支持语法高亮与图片加载 |
-| 创建 Issue | 仓库 owner/repo，标题“修复登录状态失效问题”，内容描述复现步骤、预期结果和实际结果 | Issue 已创建，进入详情页显示编号、标题、状态、作者、时间和评论区 |
-| 创建 Webhook | 仓库 owner/repo，回调地址 `https://example.com/webhook`，触发事件 push、pull_request、issue | Webhook 创建成功，仓库能力中心显示 Webhook 列表，可继续测试、编辑或删除 |
+| 设置项 | 说明 |
+| --- | --- |
+| 深色模式 | 明暗主题切换，本地持久化 |
+| 生物识别解锁 | 开启后切回前台需要指纹 / 面容解锁 |
+| 账号管理 | 多账号添加与切换 |
+| AI 设置 | 配置 AI 摘要的 API Key、Base URL、Model |
+| 清除缓存 | 清理图片缓存 |
+| 检查更新 | 手动检查新版本 |
 
-## 八、技术实现
+**AI 摘要（可选）**：在「我的 → AI 设置」中填入 OpenAI 兼容接口的 API Key 即可启用，用于把 Issue / PR 浓缩为中文摘要。默认对接 DeepSeek（`https://api.deepseek.com`，模型 `deepseek-chat`），Base URL 和 Model 均可在设置页修改为其他 OpenAI 兼容服务。不配置则该功能不生效，不影响其他功能。
 
-- **界面**：Flutter、Material 3
-- **网络**：http、Gitee Open API v5
-- **本地配置**：shared_preferences
-- **安全存储**：flutter_secure_storage
-- **Markdown / 图片**：markdown_widget、cached_network_image
-- **外部链接**：url_launcher
-- **本地认证**：local_auth
-- **深链**：app_links
-- **代码高亮**：highlight
-- **版本信息与更新**：package_info_plus、GitHub/Gitee Releases
+**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查优先访问 Gitee 公开 Release，失败或限流时自动回退 GitHub；检查不需要登录，不会发送 Gitee 令牌；结果在应用进程内缓存 10 分钟。发现新版本时，Android 直接下载通用 APK，Windows 下载 x64 便携 ZIP。
 
-## 九、常见疑问
+## 项目结构
 
-**需要后台服务或内置账号吗？**
-不需要内置账号。你可以通过 Gitee 官方 OAuth 页面使用账号密码登录，也可以使用自己的私人令牌；应用不会保存账号密码。
+```
+gitee-mobile-client/
+├── lib/
+│   ├── ai/               # AI 摘要服务（OpenAI 兼容接口）
+│   ├── api/              # Gitee Open API v5 封装（gitee_api.dart）与 HTTP 客户端
+│   ├── auth/             # 登录凭证：令牌 / OAuth 存储、OAuth 流程、生物识别锁
+│   ├── models/           # Gitee API 数据模型与解析
+│   ├── pages/            # 页面：登录、主页、仓库、Issue、PR、设置等
+│   ├── providers/        # 应用设置（深色模式、搜索历史）
+│   ├── services/         # 更新检查服务
+│   ├── theme/            # Material 3 主题
+│   ├── utils/            # 深链、外部链接工具
+│   └── widgets/          # 通用组件：分页列表、Markdown 渲染、骨架屏等
+├── test/                 # 单元测试与组件测试（9 个测试文件）
+├── android/              # Android 平台配置（含 gitee:// 深链注册）
+├── windows/              # Windows 桌面平台配置
+├── .github/workflows/    # CI 与 Release 工作流
+└── pubspec.yaml          # 依赖与版本号（发布版本以此为准）
+```
+
+## 构建与发布
+
+```bash
+# Android Debug APK
+flutter build apk --debug
+
+# Android Release APK
+flutter build apk --release
+
+# Android 分架构 APK / App Bundle
+flutter build apk --release --split-per-abi
+flutter build appbundle --release
+
+# Windows x64 Release
+flutter build windows --release
+```
+
+产物位置：
+
+- Android APK：`build/app/outputs/flutter-apk/`（Release 通用包为 `app-release.apk`）
+- Windows：`build/windows/x64/runner/Release/`（整个目录即为便携版，可打包为 ZIP）
+
+**发布新版本**：仓库内置 Release 工作流（见下节），发布时需保证 `pubspec.yaml` 的 `version`（如 `2.0.2+5` 中的 `2.0.2`）与推送的 `v*` 标签一致（如 `v2.0.2`），工作流会在构建前校验两者，不一致将直接失败。客户端的更新检查同样依据该版本号判断是否有新版本。
+
+## 运行测试
+
+```bash
+# 静态分析
+flutter analyze
+
+# 单元测试与组件测试
+flutter test
+```
+
+测试覆盖 API 客户端、Gitee 实体解析、OAuth 流程、深链处理、更新服务、Markdown 渲染、外部链接等模块，共 9 个测试文件。
+
+## CI/CD
+
+仓库内置两套 GitHub Actions 工作流（`.github/workflows/`）：
+
+- **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK；Windows 上执行分析、测试并构建 Windows 桌面产物。
+- **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB）与 Windows x64 ZIP，并把这些产物发布为对应版本的 Release。
+
+发布产物统一在仓库的 [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) 页面下载。
+
+## 常见问题
+
+**需要自建后端服务吗？**
+不需要。应用直连 Gitee Open API v5，唯一的外部可选依赖是你在 AI 设置中填写的 OpenAI 兼容摘要接口。
 
 **令牌存在哪里，安全吗？**
-令牌使用系统安全存储（flutter_secure_storage）保存；从旧版本升级时，明文令牌会自动迁移到安全存储并删除。
+令牌保存在系统安全存储（Android Keystore / Windows 凭据管理等，由 flutter_secure_storage 提供）。从旧版本升级时，明文令牌会自动迁移到安全存储并删除原文件。
 
-**AI 摘要是必需功能吗？**
-不是。它是可选功能，需要你自行配置 OpenAI 兼容接口的 API Key，默认使用 DeepSeek。
+**OAuth 登录后跳不回应用？**
+确认构建时通过 `--dart-define` 注入了 `GITEE_CLIENT_ID` 和 `GITEE_CLIENT_SECRET`，且 OAuth 应用的回调地址与 `GITEE_REDIRECT_URI`（默认 `gitee://oauth/callback`）完全一致；未配置时登录页会提示先完成配置。
 
-**这个仓库能作为 Dart 包发布吗？**
-不能。`pubspec.yaml` 中已设置 `publish_to: none`，项目当前按应用项目维护，不作为 Dart 包发布。
+**部分操作提示无权限？**
+写入类操作（创建 Issue / PR、编辑文件、管理 Webhook 等）要求令牌具备对应权限，请到 Gitee 重新生成令牌并勾选所需 scope；OAuth 登录则需在授权页同意相应权限。
 
-## 十、仓库信息
+**更新检查提示失败？**
+更新检查优先访问 Gitee 公开 Release，失败时回退 GitHub。两者都不可达通常是当前网络受限，可稍后在「我的 → 设置 → 检查更新」重试；检查结果缓存 10 分钟，手动检查会强制刷新。
 
-- 仓库地址：<https://gitee.com/yuchen0x1/gitee-mobile-client>
+**这个仓库能作为 Dart 包发布到 pub.dev 吗？**
+不能。`pubspec.yaml` 已设置 `publish_to: none`，本项目按应用项目维护。
+
+## 致谢
+
+- 原项目：[nhzhongguo/gitee_app](https://gitee.com/nhzhongguo/gitee_app)（原创作者：nhzhongguo），本仓库是在原项目基础上持续升级的二次开发版本；
+- 设计参考：[GitTouch](https://github.com/pd4d10/git-touch)、[GitNex](https://github.com/gitnex-org/gitnex)、[flutter-GitConnect](https://github.com/TheAlphamerc/flutter-GitConnect)（仅产品与架构参考，未复制代码，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）。
+
+## 反馈与交流
+
 - 问题反馈：[Gitee Issues](https://gitee.com/yuchen0x1/gitee-mobile-client/issues)
-- 维护状态：正常更新
-- 许可证：暂未声明（如需分发，请补充 LICENSE 文件并在此处更新）
-
-## 十一、来源与致谢
-
-- 原项目：[nhzhongguo/gitee_app](https://gitee.com/nhzhongguo/gitee_app)（原创作者：nhzhongguo）
-- 本仓库是在原项目基础上持续升级的二次开发版本，感谢原作者的付出。
-
-## 十二、反馈与交流
-
 - QQ 交流群：1016190748
 - Telegram：<https://t.me/lenmoC>
 
-联系或反馈时，请备注原项目地址 https://gitee.com/nhzhongguo/gitee_app、原创作者 nhzhongguo，并说明你使用的版本、运行平台和具体问题，便于更快定位。
+反馈时请说明使用的版本、运行平台和具体问题，便于更快定位。
+
+## License
+
+本项目尚未添加 LICENSE 文件。在许可证明确之前，代码默认保留所有权利，如需引用或分发请先通过 Issues 与作者联系。
