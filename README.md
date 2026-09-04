@@ -240,7 +240,6 @@ flutter test
 
 ## 致谢
 
-- 原项目：[nhzhongguo/gitee_app](https://gitee.com/nhzhongguo/gitee_app)（原创作者：nhzhongguo），本仓库是在原项目基础上持续升级的二次开发版本；
 - 设计参考：[GitTouch](https://github.com/pd4d10/git-touch)、[GitNex](https://github.com/gitnex-org/gitnex)、[flutter-GitConnect](https://github.com/TheAlphamerc/flutter-GitConnect)（仅产品与架构参考，未复制代码，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）。
 
 ## 反馈与交流
