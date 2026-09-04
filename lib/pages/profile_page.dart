@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../auth/app_lock.dart';
 import '../auth/auth_store.dart';
-import '../auth/gitee_oauth.dart';
 import '../api/gitee_api.dart';
 import '../models/user.dart';
 import '../providers/app_settings.dart';
@@ -420,7 +419,6 @@ class _ProfilePageState extends State<ProfilePage> {
                           onPressed: () async {
                             final ok = await AuthStore.switchAccount(
                               account['username']!,
-                              refreshOAuthToken: giteeOAuthService.refresh,
                             );
                             if (!ok) {
                               if (context.mounted) {
@@ -433,8 +431,9 @@ class _ProfilePageState extends State<ProfilePage> {
                             }
                             if (context.mounted) Navigator.pop(context);
                             final activeToken = await AuthStore.readToken();
-                            if (activeToken == null || activeToken.isEmpty)
+                            if (activeToken == null || activeToken.isEmpty) {
                               return;
+                            }
                             GiteeApi.setToken(activeToken);
                             await widget.onRefresh?.call();
                           },

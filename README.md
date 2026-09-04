@@ -23,9 +23,9 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机和桌面上
 
 **账号与安全**
 
-- 私人令牌登录，或通过系统浏览器完成 Gitee OAuth 授权登录（账号密码只在 Gitee 页面输入）；
+- 私人令牌登录，令牌通过 Authorization 请求头传递，不写入 URL 或表单正文；
 - 令牌保存在系统安全存储（flutter_secure_storage），旧版明文令牌自动迁移并清理；
-- 多账号管理与一键切换；OAuth 令牌过期自动刷新；
+- 多账号管理与一键切换；
 - 生物识别解锁（指纹 / 面容），可在设置中开关。
 
 **仓库与代码**
@@ -100,32 +100,10 @@ flutter run
 
 ## 登录配置
 
-应用启动后进入登录页，支持两种方式：
-
-**方式一：私人令牌登录（开箱即用）**
+应用启动后进入登录页，使用 Gitee 私人令牌登录：
 
 1. 在 Gitee「设置 → 安全设置 → 私人令牌」中[生成令牌](https://gitee.com/profile/personal_access_tokens)，按需勾选 projects、issues、pull_requests、notifications 等权限；
 2. 把令牌粘贴进应用登录页即可。所有请求通过 `Authorization` 请求头携带令牌，不写入 URL。
-
-**方式二：Gitee 账号 OAuth 登录（需构建时注入配置）**
-
-1. 在 Gitee「设置 → 第三方应用 → 创建应用」中创建 OAuth 应用，回调地址填 `gitee://oauth/callback`；
-2. 用构建参数注入 `client_id` / `client_secret` 后再运行或打包：
-
-```bash
-flutter run \
-  --dart-define=GITEE_CLIENT_ID=你的_client_id \
-  --dart-define=GITEE_CLIENT_SECRET=你的_client_secret \
-  --dart-define=GITEE_REDIRECT_URI=gitee://oauth/callback
-```
-
-| 环境变量 | 必填 | 默认值 | 说明 |
-| --- | --- | --- | --- |
-| `GITEE_CLIENT_ID` | OAuth 登录必填 | 无 | Gitee OAuth 应用的 Client ID |
-| `GITEE_CLIENT_SECRET` | OAuth 登录必填 | 无 | Gitee OAuth 应用的 Client Secret |
-| `GITEE_REDIRECT_URI` | 可选 | `gitee://oauth/callback` | OAuth 回调地址，需与 OAuth 应用配置一致 |
-
-> **安全须知**：`GITEE_CLIENT_SECRET` 会随移动端构建产物分发，无法视为真正的秘密，且回调使用自定义 scheme，可能被注册同名 scheme 的其他应用拦截。因此 OAuth 登录更适合个人构建或内测环境；生产分发建议由自有后端完成授权码换令牌，并改用 Android App Links 等域名校验机制。不要把真实密钥提交到仓库。
 
 ## 使用说明
 
@@ -158,7 +136,7 @@ gitee-mobile-client/
 ├── lib/
 │   ├── ai/               # AI 摘要服务（OpenAI 兼容接口）
 │   ├── api/              # Gitee Open API v5 封装（gitee_api.dart）与 HTTP 客户端
-│   ├── auth/             # 登录凭证：令牌 / OAuth 存储、OAuth 流程、生物识别锁
+│   ├── auth/             # 登录凭证：令牌安全存储、多账号、生物识别锁
 │   ├── models/           # Gitee API 数据模型与解析
 │   ├── pages/            # 页面：登录、主页、仓库、Issue、PR、设置等
 │   ├── providers/        # 应用设置（深色模式、搜索历史）
@@ -226,11 +204,8 @@ flutter test
 **令牌存在哪里，安全吗？**
 令牌保存在系统安全存储（Android Keystore / Windows 凭据管理等，由 flutter_secure_storage 提供）。从旧版本升级时，明文令牌会自动迁移到安全存储并删除原文件。
 
-**OAuth 登录后跳不回应用？**
-确认构建时通过 `--dart-define` 注入了 `GITEE_CLIENT_ID` 和 `GITEE_CLIENT_SECRET`，且 OAuth 应用的回调地址与 `GITEE_REDIRECT_URI`（默认 `gitee://oauth/callback`）完全一致；未配置时登录页会提示先完成配置。
-
 **部分操作提示无权限？**
-写入类操作（创建 Issue / PR、编辑文件、管理 Webhook 等）要求令牌具备对应权限，请到 Gitee 重新生成令牌并勾选所需 scope；OAuth 登录则需在授权页同意相应权限。
+写入类操作（创建 Issue / PR、编辑文件、管理 Webhook 等）要求令牌具备对应权限，请到 Gitee 重新生成令牌并勾选所需 scope。
 
 **更新检查提示失败？**
 更新检查优先访问 Gitee 公开 Release，失败时回退 GitHub。两者都不可达通常是当前网络受限，可稍后在「我的 → 设置 → 检查更新」重试；检查结果缓存 10 分钟，手动检查会强制刷新。

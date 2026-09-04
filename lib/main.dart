@@ -1,10 +1,7 @@
-import 'dart:async';
-
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'auth/auth_store.dart';
 import 'auth/app_lock.dart';
-import 'auth/gitee_oauth.dart';
 import 'api/gitee_api.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
@@ -15,8 +12,6 @@ import 'utils/deep_link.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 bool _handlingUnauthorized = false;
-String? _lastOAuthCallback;
-Uri? _queuedOAuthCallback;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,42 +42,10 @@ void _setupDeepLinks() {
     if (uri == null) return;
     Future.delayed(
       const Duration(milliseconds: 500),
-      () => handleDeepLink(
-        uri,
-        rootNavigatorKey,
-        onOAuthCallback: _handleOAuthCallback,
-      ),
+      () => handleDeepLink(uri, rootNavigatorKey),
     );
   });
-  appLinks.uriLinkStream.listen((uri) => handleDeepLink(
-        uri,
-        rootNavigatorKey,
-        onOAuthCallback: _handleOAuthCallback,
-      ));
-}
-
-Future<void> _handleOAuthCallback(Uri uri) async {
-  final navigator = rootNavigatorKey.currentState;
-  if (navigator == null) {
-    _queuedOAuthCallback = uri;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final queued = _queuedOAuthCallback;
-      _queuedOAuthCallback = null;
-      if (queued != null) unawaited(_handleOAuthCallback(queued));
-    });
-    return;
-  }
-  if (_lastOAuthCallback == uri.toString()) return;
-  _lastOAuthCallback = uri.toString();
-  final context = navigator.context;
-  final route = ModalRoute.of(context);
-  if (route?.settings.name == '/oauth-callback') return;
-  await navigator.push(
-    MaterialPageRoute(
-      settings: const RouteSettings(name: '/oauth-callback'),
-      builder: (_) => LoginPage(oauthCallback: uri),
-    ),
-  );
+  appLinks.uriLinkStream.listen((uri) => handleDeepLink(uri, rootNavigatorKey));
 }
 
 class GiteeApp extends StatelessWidget {
@@ -170,18 +133,7 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _checkLogin() async {
-    var token = await AuthStore.readToken();
-    final oauthToken = await AuthStore.readOAuthToken();
-    if (oauthToken != null && oauthToken.isExpired) {
-      try {
-        final refreshed = await giteeOAuthService.refresh(oauthToken);
-        await AuthStore.writeOAuthToken(refreshed);
-        token = refreshed.accessToken;
-      } catch (_) {
-        await AuthStore.clear();
-        token = null;
-      }
-    }
+    final token = await AuthStore.readToken();
     if (!mounted) return;
     if (token != null && token.isNotEmpty) {
       GiteeApi.setToken(token);

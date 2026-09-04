@@ -1,32 +1,15 @@
 import 'package:flutter/material.dart';
 import '../pages/issue_detail_page.dart';
-import '../pages/login_page.dart';
 import '../pages/repo_detail_page.dart';
 import '../pages/user_profile_page.dart';
 
 /// 解析 gitee:// 深链并跳转到对应页面。
-/// 支持 OAuth 回调以及 repo、issue、user 业务深链。
+/// 支持 repo、issue、user 业务深链。
 void handleDeepLink(
   Uri uri,
-  GlobalKey<NavigatorState> navKey, {
-  Future<void> Function(Uri)? onOAuthCallback,
-}) {
+  GlobalKey<NavigatorState> navKey,
+) {
   if (uri.scheme != 'gitee') return;
-
-  if (uri.host == 'oauth' && uri.path == '/callback') {
-    final callback = onOAuthCallback;
-    if (callback != null) {
-      callback(uri);
-    } else {
-      final navigator = navKey.currentState;
-      if (navigator != null) {
-        navigator.push(
-          MaterialPageRoute(builder: (_) => LoginPage(oauthCallback: uri)),
-        );
-      }
-    }
-    return;
-  }
 
   final navigator = navKey.currentState;
   if (navigator == null) return;

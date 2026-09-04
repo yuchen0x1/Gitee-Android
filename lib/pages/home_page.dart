@@ -99,12 +99,10 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         setState(() => _user = user);
         // 登录后自动保存到多账号列表
-        final oauthToken = await AuthStore.readOAuthToken();
         await AuthStore.addAccount(
           username: user.login,
           token: GiteeApi.token ?? '',
           avatarUrl: user.avatarUrl,
-          oauthToken: oauthToken,
         );
       }
     } catch (_) {
