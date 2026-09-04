@@ -2,7 +2,7 @@
 
 > 基于 Flutter 打造的 Gitee（码云）非官方客户端 —— 在手机上刷通知、读代码、回 Issue、审 PR。
 
-![Release](https://img.shields.io/gitee/v/yuchen0x1/gitee-mobile-client) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Windows-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
+![Release](https://img.shields.io/gitee/v/yuchen0x1/gitee-mobile-client) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Windows-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
 
 > **声明**：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力（Open API v5）为开发者提供便利。
 
@@ -252,4 +252,4 @@ flutter test
 
 ## License
 
-本项目尚未添加 LICENSE 文件。在许可证明确之前，代码默认保留所有权利，如需引用或分发请先通过 Issues 与作者联系。
+本项目基于 [MIT License](LICENSE) 开源发布。分发或二次开发时，请保留源码中的版权与许可声明。
