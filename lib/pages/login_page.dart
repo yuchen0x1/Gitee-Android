@@ -57,79 +57,122 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primaryRed;
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 28),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 32),
-              GlassSurface(
-                borderRadius: BorderRadius.circular(20),
-                padding: const EdgeInsets.all(16),
-                tint: AppColors.primaryRed.withValues(alpha: 0.92),
-                child: const Icon(Icons.cloud_outlined,
-                    color: Colors.white, size: 34),
-              ),
-              const SizedBox(height: 20),
-              Text('欢迎回来',
-                  style: theme.textTheme.headlineMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              Text(
-                '使用 Gitee 私人令牌登录',
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 32),
-              TextField(
-                controller: _tokenCtrl,
-                obscureText: _obscure,
-                textInputAction: TextInputAction.done,
-                onSubmitted: (_) => _loginWithToken(),
-                decoration: InputDecoration(
-                  labelText: '私人令牌 (Private Token)',
-                  hintText: '从 Gitee 设置-私人令牌中获取',
-                  prefixIcon:
-                      const Icon(Icons.vpn_key, color: AppColors.primaryRed),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                        _obscure ? Icons.visibility_off : Icons.visibility),
-                    onPressed: () => setState(() => _obscure = !_obscure),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: _loading ? null : _loginWithToken,
-                  child: _loading ? _progress() : const Text('使用令牌登录'),
-                ),
-              ),
-              const SizedBox(height: 18),
-              GlassSurface(
-                padding: const EdgeInsets.all(18),
-                child: Padding(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        '如何获取令牌？',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 15),
+              Center(
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [AppColors.primaryLight, AppColors.primaryRed],
+                    ),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryRed.withValues(alpha: 0.35),
+                        blurRadius: 26,
+                        offset: const Offset(0, 10),
                       ),
-                      const SizedBox(height: 10),
-                      _tip('1. 电脑访问 gitee.com 并登录'),
-                      _tip('2. 右上角头像 → 设置'),
-                      _tip('3. 安全设置 → 私人令牌'),
-                      _tip('4. 生成令牌并授予所需权限'),
-                      _tip('5. 复制令牌粘贴到上方输入框'),
                     ],
                   ),
+                  child:
+                      const Icon(Icons.cloud_outlined, color: Colors.white, size: 40),
                 ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                '欢迎回来',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '使用 Gitee 私人令牌登录',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 30),
+              GlassSurface(
+                borderRadius: BorderRadius.circular(18),
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _tokenCtrl,
+                      obscureText: _obscure,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _loginWithToken(),
+                      decoration: InputDecoration(
+                        labelText: '私人令牌 (Private Token)',
+                        hintText: '从 Gitee 设置-私人令牌中获取',
+                        prefixIcon: const Icon(Icons.vpn_key_rounded,
+                            color: AppColors.primaryRed),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscure
+                              ? Icons.visibility_off_rounded
+                              : Icons.visibility_rounded),
+                          onPressed: () => setState(() => _obscure = !_obscure),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      height: 52,
+                      child: FilledButton.icon(
+                        onPressed: _loading ? null : _loginWithToken,
+                        icon: _loading
+                            ? _progress()
+                            : const Icon(Icons.login_rounded, size: 20),
+                        label: const Text('使用令牌登录',
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              GlassSurface(
+                borderRadius: BorderRadius.circular(18),
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.key_rounded, size: 18, color: accent),
+                        const SizedBox(width: 8),
+                        Text('如何获取令牌？',
+                            style: theme.textTheme.titleMedium),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _step(1, '电脑访问 gitee.com 并登录', theme),
+                    _step(2, '右上角头像 → 设置', theme),
+                    _step(3, '安全设置 → 私人令牌', theme),
+                    _step(4, '生成令牌并授予所需权限', theme),
+                    _step(5, '复制令牌粘贴到上方输入框', theme),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 22),
+              Text(
+                'Gitee Client · 非官方开源客户端',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
               ),
             ],
           ),
@@ -138,18 +181,40 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _progress() {
-    return const SizedBox(
-      width: 24,
-      height: 24,
-      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+  Widget _step(int index, String text, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = isDark ? AppColors.primaryLight : AppColors.primaryRed;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              '$index',
+              style: TextStyle(
+                  fontSize: 11, fontWeight: FontWeight.w700, color: accent),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: theme.textTheme.bodyMedium)),
+        ],
+      ),
     );
   }
 
-  Widget _tip(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
+  Widget _progress() {
+    return const SizedBox(
+      width: 22,
+      height: 22,
+      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
     );
   }
 
