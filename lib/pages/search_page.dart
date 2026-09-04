@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
+import '../api/so_search_api.dart';
 import '../models/issue.dart';
 import '../models/repo.dart';
 import '../models/user.dart';
@@ -36,18 +37,6 @@ class _SearchPageState extends State<SearchPage> {
     'Kotlin',
     'Swift'
   ];
-  static const _languages = [
-    '',
-    'Dart',
-    'Java',
-    'JavaScript',
-    'Python',
-    'Go',
-    'Kotlin',
-    'Swift',
-    'C++',
-    'Rust'
-  ];
 
   final _ctrl = TextEditingController();
   final _scroll = ScrollController();
@@ -55,16 +44,10 @@ class _SearchPageState extends State<SearchPage> {
   final _userResults = <User>[];
   final _issueResults = <Issue>[];
   _SearchType _type = _SearchType.repo;
-  bool _loading = false,
-      _searched = false,
-      _hasMore = true,
-      _includeForks = false;
+  bool _loading = false, _searched = false, _hasMore = true;
   int _page = 1;
   int _searchGeneration = 0;
   String _lastQuery = '';
-  String _repoLanguage = '';
-  String _repoOwner = '';
-  String _repoSort = '';
   String _issueState = '';
   String _issueRepo = '';
   String _issueLabel = '';
@@ -99,14 +82,12 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final page = _page;
       if (_type == _SearchType.repo) {
-        final list = await GiteeApi.searchRepos(
+        // v5 搜索接口存在服务端已知问题（常返回空结果），仓库搜索走
+        // Gitee 网页搜索同款数据源。
+        final list = await SoSearchApi.shared.searchRepos(
           _lastQuery,
-          page: page,
-          perPage: 30,
-          language: _repoLanguage.isEmpty ? null : _repoLanguage,
-          owner: _repoOwner.isEmpty ? null : _repoOwner,
-          includeForks: _includeForks,
-          sort: _repoSort.isEmpty ? null : _repoSort,
+          from: (page - 1) * 30,
+          size: 30,
         );
         if (!mounted || generation != _searchGeneration) return;
         setState(() {
@@ -184,23 +165,17 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   Future<void> _openFilters() async {
-    var repoLanguage = _repoLanguage,
-        repoOwner = _repoOwner,
-        repoSort = _repoSort,
-        issueState = _issueState,
+    var issueState = _issueState,
         issueRepo = _issueRepo,
         issueLabel = _issueLabel,
         userSort = _userSort;
-    var includeForks = _includeForks;
-    final repoOwnerCtrl = TextEditingController(text: _repoOwner);
     final issueRepoCtrl = TextEditingController(text: _issueRepo);
     final issueLabelCtrl = TextEditingController(text: _issueLabel);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (context) => StatefulBuilder(builder: (context, modalSetState) {
-        final isRepo = _type == _SearchType.repo,
-            isIssue = _type == _SearchType.issue;
+        final isIssue = _type == _SearchType.issue;
         return SafeArea(
             child: Padding(
           padding: EdgeInsets.fromLTRB(
@@ -216,43 +191,6 @@ class _SearchPageState extends State<SearchPage> {
                       onPressed: () => Navigator.pop(context),
                       icon: const Icon(Icons.close))
                 ]),
-                if (isRepo) ...[
-                  TextField(
-                      decoration:
-                          const InputDecoration(labelText: '空间（用户 / 组织 / 企业）'),
-                      controller: repoOwnerCtrl,
-                      onChanged: (v) => repoOwner = v),
-                  DropdownButtonFormField<String>(
-                      initialValue: repoLanguage,
-                      decoration: const InputDecoration(labelText: '语言'),
-                      items: _languages
-                          .map((e) => DropdownMenuItem(
-                              value: e, child: Text(e.isEmpty ? '全部语言' : e)))
-                          .toList(),
-                      onChanged: (v) =>
-                          modalSetState(() => repoLanguage = v ?? '')),
-                  DropdownButtonFormField<String>(
-                      initialValue: repoSort,
-                      decoration: const InputDecoration(labelText: '排序'),
-                      items: const [
-                        DropdownMenuItem(value: '', child: Text('最佳匹配')),
-                        DropdownMenuItem(
-                            value: 'last_push_at', child: Text('最近更新')),
-                        DropdownMenuItem(
-                            value: 'stars_count', child: Text('收藏最多')),
-                        DropdownMenuItem(
-                            value: 'forks_count', child: Text('Fork 最多')),
-                        DropdownMenuItem(
-                            value: 'watches_count', child: Text('关注最多'))
-                      ],
-                      onChanged: (v) =>
-                          modalSetState(() => repoSort = v ?? '')),
-                  SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('包含 Fork 仓库'),
-                      value: includeForks,
-                      onChanged: (v) => modalSetState(() => includeForks = v)),
-                ],
                 if (isIssue) ...[
                   TextField(
                       decoration:
@@ -275,7 +213,7 @@ class _SearchPageState extends State<SearchPage> {
                       onChanged: (v) =>
                           modalSetState(() => issueState = v ?? '')),
                 ],
-                if (!isRepo && !isIssue)
+                if (!isIssue)
                   DropdownButtonFormField<String>(
                       initialValue: userSort,
                       decoration: const InputDecoration(labelText: '用户排序'),
@@ -293,10 +231,6 @@ class _SearchPageState extends State<SearchPage> {
                         icon: const Icon(Icons.check),
                         label: const Text('应用筛选'),
                         onPressed: () {
-                          _repoLanguage = repoLanguage;
-                          _repoOwner = repoOwner;
-                          _repoSort = repoSort;
-                          _includeForks = includeForks;
                           _issueState = issueState;
                           _issueRepo = issueRepo;
                           _issueLabel = issueLabel;
@@ -308,7 +242,6 @@ class _SearchPageState extends State<SearchPage> {
         ));
       }),
     );
-    repoOwnerCtrl.dispose();
     issueRepoCtrl.dispose();
     issueLabelCtrl.dispose();
   }
@@ -320,7 +253,7 @@ class _SearchPageState extends State<SearchPage> {
       appBar: AppBar(
         title: const Text('搜索'),
         actions: [
-          if (_searched)
+          if (_searched && _type != _SearchType.repo)
             IconButton(
               tooltip: '筛选',
               icon: const Icon(Icons.tune),
@@ -407,23 +340,16 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   bool get _hasActiveFilter =>
-      _repoLanguage.isNotEmpty ||
-      _repoOwner.isNotEmpty ||
-      _repoSort.isNotEmpty ||
-      _includeForks ||
       _issueState.isNotEmpty ||
       _issueRepo.isNotEmpty ||
       _issueLabel.isNotEmpty ||
       _userSort.isNotEmpty;
   String get _filterSummary {
     final parts = <String>[];
-    if (_repoLanguage.isNotEmpty) parts.add(_repoLanguage);
-    if (_repoOwner.isNotEmpty) parts.add('空间: $_repoOwner');
-    if (_repoSort.isNotEmpty) parts.add('已排序');
-    if (_includeForks) parts.add('含 Fork');
     if (_issueRepo.isNotEmpty) parts.add(_issueRepo);
     if (_issueLabel.isNotEmpty) parts.add('标签: $_issueLabel');
     if (_issueState.isNotEmpty) parts.add(_issueState == 'open' ? '开启' : '已关闭');
+    if (_userSort.isNotEmpty) parts.add('已排序');
     return '筛选：${parts.join(' · ')}';
   }
 
