@@ -21,6 +21,8 @@ import 'starred_repos_page.dart';
 import 'subscriptions_page.dart';
 import 'user_repos_page.dart';
 import 'organizations_page.dart';
+import 'gist_list_page.dart';
+import 'ssh_keys_page.dart';
 
 class ProfilePage extends StatefulWidget {
   final User? user;
@@ -140,6 +142,30 @@ class _ProfilePageState extends State<ProfilePage> {
                                   trailing: const Icon(Icons.chevron_right,
                                       color: AppColors.textTertiary),
                                   onTap: _showAccountManager,
+                                ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.code_outlined,
+                                      color: AppColors.primaryRed),
+                                  title: const Text('代码片段'),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      color: AppColors.textTertiary),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) => const GistListPage()),
+                                  ),
+                                ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.vpn_key_outlined,
+                                      color: AppColors.primaryRed),
+                                  title: const Text('SSH 公钥'),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      color: AppColors.textTertiary),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) => const SshKeysPage()),
+                                  ),
                                 ),
                                 const Divider(),
                                 ListTile(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
 import '../models/gitee_api_entities.dart';
+import '../models/issue.dart' show Label;
 import '../models/repo.dart';
 import '../models/user.dart';
 import '../theme/app_theme.dart';
@@ -35,11 +36,18 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
   List<User> _collaborators = [];
   Map<String, dynamic> _languages = {};
   Map<String, dynamic> _license = {};
+  List<Label> _labels = [];
+  String? _labelsError;
+  List<Milestone> _milestones = [];
+  String? _milestonesError;
+  List<DeployKey> _deployKeys = [];
+  String? _deployKeysError;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadExtras();
   }
 
   Future<void> _load() async {
@@ -70,6 +78,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
         _license = results[7] as Map<String, dynamic>;
         _loading = false;
       });
+      _loadExtras();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -77,6 +86,174 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
           _error = e.toString();
         });
       }
+    }
+  }
+
+  /// 标签 / 里程碑 / 部署公钥各自独立加载，
+  /// 某一项失败（如无权限）不影响其它区块。
+  Future<void> _loadExtras() async {
+    Future<void> safe(Future<void> Function() job,
+        void Function(Object) onError) async {
+      try {
+        await job();
+      } catch (e) {
+        onError(e);
+      }
+    }
+
+    await safe(() async {
+      final labels = await GiteeApi.getRepoLabels(widget.owner, widget.repo);
+      if (mounted) setState(() => _labels = labels);
+    }, (e) {
+      if (mounted) setState(() => _labelsError = e.toString());
+    });
+    await safe(() async {
+      final milestones = await GiteeApi.getMilestones(
+        widget.owner,
+        widget.repo,
+        state: 'all',
+      );
+      if (mounted) setState(() => _milestones = milestones);
+    }, (e) {
+      if (mounted) setState(() => _milestonesError = e.toString());
+    });
+    await safe(() async {
+      final keys = await GiteeApi.getDeployKeys(widget.owner, widget.repo);
+      if (mounted) setState(() => _deployKeys = keys);
+    }, (e) {
+      if (mounted) setState(() => _deployKeysError = e.toString());
+    });
+  }
+
+  /// 语言统计行；v5 现返回 {languages: [{language, percent, bytes}]} 包装结构，
+  /// 兼容旧的 {语言: 字节数} 平铺结构。
+  List<(String, String)> get _languageRows {
+    final rows = <(String, String)>[];
+    final raw = _languages['languages'];
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is Map) {
+          final name = item['language']?.toString() ?? '';
+          if (name.isEmpty) continue;
+          final percent = item['percent']?.toString() ?? '';
+          rows.add((name, percent.isEmpty ? '' : '$percent%'));
+        }
+      }
+      return rows;
+    }
+    for (final entry in _languages.entries) {
+      rows.add((entry.key, entry.value.toString()));
+    }
+    return rows;
+  }
+
+  Future<void> _createLabel() async {
+    final values = await _formDialog(
+      title: '创建标签',
+      fields: const [
+        ('name', '标签名称', '例如 bug'),
+        ('color', '颜色（十六进制）', '例如 FBCA04'),
+      ],
+    );
+    if (values == null || values['name']!.isEmpty) return;
+    try {
+      await GiteeApi.createRepoLabel(
+        owner: widget.owner,
+        repo: widget.repo,
+        name: values['name']!,
+        color: values['color']!.isEmpty ? 'C71D23' : values['color']!,
+      );
+      await _loadExtras();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _deleteLabel(Label label) async {
+    try {
+      await GiteeApi.deleteRepoLabel(widget.owner, widget.repo, label.id);
+      await _loadExtras();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _createMilestone() async {
+    final values = await _formDialog(
+      title: '创建里程碑',
+      fields: const [
+        ('title', '里程碑标题', '例如 v2.1 发布'),
+        ('description', '描述', '可选'),
+        ('due_on', '截止日期', 'YYYY-MM-DD，可选'),
+      ],
+    );
+    if (values == null || values['title']!.isEmpty) return;
+    try {
+      await GiteeApi.createMilestone(
+        owner: widget.owner,
+        repo: widget.repo,
+        title: values['title']!,
+        description: values['description'],
+        dueOn: values['due_on'],
+      );
+      await _loadExtras();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _toggleMilestone(Milestone milestone) async {
+    try {
+      await GiteeApi.updateMilestone(
+        owner: widget.owner,
+        repo: widget.repo,
+        id: milestone.id,
+        state: milestone.state == 'open' ? 'closed' : 'open',
+      );
+      await _loadExtras();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _deleteMilestone(Milestone milestone) async {
+    try {
+      await GiteeApi.deleteMilestone(widget.owner, widget.repo, milestone.id);
+      await _loadExtras();
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _addDeployKey() async {
+    final values = await _formDialog(
+      title: '添加部署公钥',
+      fields: const [
+        ('title', '公钥名称', '例如 deploy-server'),
+        ('key', '公钥内容', 'ssh-rsa AAAA...'),
+      ],
+    );
+    if (values == null || values['key']!.isEmpty) return;
+    try {
+      await GiteeApi.createDeployKey(
+        owner: widget.owner,
+        repo: widget.repo,
+        key: values['key']!,
+        title: values['title']!.isEmpty ? 'deploy-key' : values['title']!,
+      );
+      await _loadExtras();
+      _showMessage('部署公钥已添加');
+    } catch (e) {
+      _showError(e);
+    }
+  }
+
+  Future<void> _deleteDeployKey(DeployKey key) async {
+    try {
+      await GiteeApi.deleteDeployKey(widget.owner, widget.repo, key.id);
+      await _loadExtras();
+    } catch (e) {
+      _showError(e);
     }
   }
 
@@ -366,13 +543,9 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
               icon: Icons.insights_outlined,
               child: Column(
                 children: [
-                  if (_languages.isNotEmpty)
-                    ..._languages.entries.map(
-                      (entry) => _MetricRow(
-                        label: entry.key,
-                        value: entry.value.toString(),
-                      ),
-                    ),
+                  ..._languageRows.map(
+                    (row) => _MetricRow(label: row.$1, value: row.$2),
+                  ),
                   if (_contributors.isNotEmpty) const Divider(),
                   ..._contributors.take(10).map(
                         (item) => _MetricRow(
@@ -380,7 +553,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                           value: '${item.contributions} 次提交',
                         ),
                       ),
-                  if (_languages.isEmpty && _contributors.isEmpty)
+                  if (_languageRows.isEmpty && _contributors.isEmpty)
                     const _InlineEmpty(text: '暂无统计数据'),
                 ],
               ),
@@ -472,6 +645,142 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                           )
                           .toList(),
                     ),
+            ),
+            _section(
+              title: '标签 (${_labels.length})',
+              icon: Icons.sell_outlined,
+              actions: [
+                IconButton(
+                  tooltip: '创建标签',
+                  onPressed: _createLabel,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+              child: _labelsError != null
+                  ? const _InlineEmpty(text: '加载失败：需要仓库管理权限')
+                  : _labels.isEmpty
+                      ? const _InlineEmpty(text: '暂无标签')
+                      : Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _labels
+                              .map(
+                                (label) => InputChip(
+                                  label: Text(label.name),
+                                  backgroundColor: label.color.isEmpty
+                                      ? null
+                                      : Color(int.parse('FF${label.color}',
+                                              radix: 16)),
+                                  labelStyle: TextStyle(
+                                    color: label.color.isEmpty
+                                        ? null
+                                        : Colors.white,
+                                  ),
+                                  onDeleted: () => _deleteLabel(label),
+                                  deleteIconColor: Colors.white70,
+                                ),
+                              )
+                              .toList(),
+                        ),
+            ),
+            _section(
+              title: '里程碑 (${_milestones.length})',
+              icon: Icons.flag_outlined,
+              actions: [
+                IconButton(
+                  tooltip: '创建里程碑',
+                  onPressed: _createMilestone,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+              child: _milestonesError != null
+                  ? _InlineEmpty(text: '加载失败：$_milestonesError')
+                  : _milestones.isEmpty
+                      ? const _InlineEmpty(text: '暂无里程碑')
+                      : Column(
+                          children: _milestones
+                              .map(
+                                (milestone) => ListTile(
+                                  dense: true,
+                                  leading: Icon(
+                                    milestone.state == 'open'
+                                        ? Icons.flag_outlined
+                                        : Icons.flag,
+                                    color: milestone.state == 'open'
+                                        ? AppColors.success
+                                        : AppColors.textTertiary,
+                                  ),
+                                  title: Text(milestone.title),
+                                  subtitle: Text(
+                                    milestone.state == 'open'
+                                        ? '进行中 · ${milestone.openIssues} 开 / ${milestone.closedIssues} 闭'
+                                        : '已关闭',
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        tooltip: milestone.state == 'open'
+                                            ? '关闭里程碑'
+                                            : '重新开启',
+                                        onPressed: () =>
+                                            _toggleMilestone(milestone),
+                                        icon: Icon(
+                                          milestone.state == 'open'
+                                              ? Icons.close
+                                              : Icons.replay,
+                                        ),
+                                      ),
+                                      IconButton(
+                                        tooltip: '删除',
+                                        onPressed: () =>
+                                            _deleteMilestone(milestone),
+                                        icon: const Icon(
+                                            Icons.delete_outline),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+            ),
+            _section(
+              title: '部署公钥 (${_deployKeys.length})',
+              icon: Icons.vpn_key_outlined,
+              actions: [
+                IconButton(
+                  tooltip: '添加部署公钥',
+                  onPressed: _addDeployKey,
+                  icon: const Icon(Icons.add),
+                ),
+              ],
+              child: _deployKeysError != null
+                  ? const _InlineEmpty(text: '加载失败：需要仓库管理权限')
+                  : _deployKeys.isEmpty
+                      ? const _InlineEmpty(text: '暂无部署公钥')
+                      : Column(
+                          children: _deployKeys
+                              .map(
+                                (key) => ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.vpn_key_outlined),
+                                  title: Text(key.title),
+                                  subtitle: Text(
+                                    key.key,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    tooltip: '删除',
+                                    onPressed: () => _deleteDeployKey(key),
+                                    icon:
+                                        const Icon(Icons.delete_outline),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
             ),
             _section(
               title: 'Webhook (${_webhooks.length})',

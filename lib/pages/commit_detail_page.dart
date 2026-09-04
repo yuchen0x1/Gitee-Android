@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
 import '../models/commit.dart';
+import '../models/issue_comment.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 import '../widgets/skeleton_list.dart';
@@ -28,6 +29,10 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
   Commit? _commit;
   bool _loading = true;
   String? _error;
+  final List<IssueComment> _comments = [];
+  final TextEditingController _commentCtrl = TextEditingController();
+  bool _commentsLoading = false;
+  bool _commentSubmitting = false;
 
   @override
   void initState() {
@@ -35,8 +40,17 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
     _load();
   }
 
+  @override
+  void dispose() {
+    _commentCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _comments.clear();
+    });
     try {
       final commit =
           await GiteeApi.getCommitDetail(widget.owner, widget.repo, widget.sha);
@@ -46,12 +60,70 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
         _loading = false;
         _error = null;
       });
+      _loadComments();
     } catch (e) {
       if (mounted) {
         setState(() {
           _loading = false;
           _error = e.toString();
         });
+      }
+    }
+  }
+
+  Future<void> _loadComments() async {
+    if (_commentsLoading) return;
+    setState(() => _commentsLoading = true);
+    try {
+      final comments = await GiteeApi.getCommitComments(
+        widget.owner,
+        widget.repo,
+        widget.sha,
+      );
+      if (!mounted) return;
+      setState(() {
+        _comments.addAll(comments);
+        _commentsLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _commentsLoading = false);
+    }
+  }
+
+  Future<void> _submitComment() async {
+    final body = _commentCtrl.text.trim();
+    if (body.isEmpty || _commentSubmitting) return;
+    setState(() => _commentSubmitting = true);
+    try {
+      final comment = await GiteeApi.createCommitComment(
+        owner: widget.owner,
+        repo: widget.repo,
+        sha: widget.sha,
+        body: body,
+      );
+      if (!mounted) return;
+      setState(() {
+        _comments.insert(0, comment);
+        _commentCtrl.clear();
+        _commentSubmitting = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _commentSubmitting = false);
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
+  Future<void> _deleteComment(IssueComment comment) async {
+    try {
+      await GiteeApi.deleteCommitComment(widget.owner, widget.repo, comment.id);
+      if (mounted) setState(() => _comments.remove(comment));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
       }
     }
   }
@@ -212,6 +284,110 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                         _DiffStat(
                             label: '-${commit.deletions}',
                             color: AppColors.primaryRed),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('评论 (${_comments.length})',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 10),
+                    if (_commentsLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: Center(
+                            child: CircularProgressIndicator(strokeWidth: 2)),
+                      )
+                    else if (_comments.isEmpty)
+                      Text('暂无评论',
+                          style: Theme.of(context).textTheme.bodySmall)
+                    else
+                      ..._comments.map(
+                        (comment) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppAvatar(
+                                url: comment.user?.avatarUrl ?? '',
+                                size: 28,
+                                radius: 7,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          comment.user?.login ?? '匿名',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleSmall,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          formatRelativeTime(comment.createdAt),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall,
+                                        ),
+                                        const Spacer(),
+                                        IconButton(
+                                          tooltip: '删除评论',
+                                          icon: const Icon(
+                                              Icons.delete_outline,
+                                              size: 18),
+                                          onPressed: () =>
+                                              _deleteComment(comment),
+                                        ),
+                                      ],
+                                    ),
+                                    SelectableText(comment.body),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const Divider(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _commentCtrl,
+                            minLines: 1,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              hintText: '评论这次提交',
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          tooltip: '发送评论',
+                          onPressed:
+                              _commentSubmitting ? null : _submitComment,
+                          icon: _commentSubmitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send, size: 18),
+                        ),
                       ],
                     ),
                   ],

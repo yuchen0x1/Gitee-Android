@@ -7,6 +7,8 @@ import '../widgets/app_image.dart';
 import '../widgets/paged_repo_list.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
+import 'followers_page.dart';
+import 'following_page.dart';
 
 /// 用户主页：用户信息 + 热门/最近更新仓库。
 class UserProfilePage extends StatefulWidget {
@@ -213,8 +215,22 @@ class _UserHeader extends StatelessWidget {
           Row(
             children: [
               _HeaderStat(label: '仓库', value: user.publicRepos),
-              _HeaderStat(label: '粉丝', value: user.followers),
-              _HeaderStat(label: '关注', value: user.following),
+              _TappableHeaderStat(
+                label: '粉丝',
+                value: user.followers,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) =>
+                      FollowersPage(username: user.login),
+                )),
+              ),
+              _TappableHeaderStat(
+                label: '关注',
+                value: user.following,
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) =>
+                      FollowingPage(username: user.login),
+                )),
+              ),
             ],
           ),
         ],
@@ -243,6 +259,46 @@ class _HeaderStat extends StatelessWidget {
           Text(label,
               style: const TextStyle(fontSize: 12, color: Colors.white70)),
         ],
+      ),
+    );
+  }
+}
+
+/// 可点击的头部统计（跳转粉丝/关注列表）。
+class _TappableHeaderStat extends StatelessWidget {
+  final String label;
+  final int value;
+  final VoidCallback onTap;
+
+  const _TappableHeaderStat({
+    required this.label,
+    required this.value,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Column(
+            children: [
+              Text(
+                value.toString(),
+                style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+              const SizedBox(height: 4),
+              Text(label,
+                  style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            ],
+          ),
+        ),
       ),
     );
   }

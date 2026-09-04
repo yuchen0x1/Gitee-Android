@@ -299,3 +299,133 @@ int _intValue(dynamic value) {
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
 }
+
+class Milestone {
+  final int id;
+  final int number;
+  final String title;
+  final String description;
+  final String state;
+  final String dueOn;
+  final int openIssues;
+  final int closedIssues;
+
+  Milestone({
+    required this.id,
+    required this.number,
+    required this.title,
+    required this.description,
+    required this.state,
+    required this.dueOn,
+    required this.openIssues,
+    required this.closedIssues,
+  });
+
+  factory Milestone.fromJson(Map<String, dynamic> json) => Milestone(
+        id: _intValue(json['id']),
+        number: _intValue(json['number']),
+        title: json['title']?.toString() ?? '',
+        description: json['description']?.toString() ?? '',
+        state: json['state']?.toString() ?? 'open',
+        dueOn: json['due_on']?.toString() ?? '',
+        openIssues: _intValue(json['open_issues']),
+        closedIssues: _intValue(json['closed_issues']),
+      );
+}
+
+class DeployKey {
+  final int id;
+  final String title;
+  final String key;
+  final String createdAt;
+
+  DeployKey({
+    required this.id,
+    required this.title,
+    required this.key,
+    required this.createdAt,
+  });
+
+  factory DeployKey.fromJson(Map<String, dynamic> json) => DeployKey(
+        id: _intValue(json['id']),
+        title: json['title']?.toString() ?? '',
+        key: json['key']?.toString() ?? '',
+        createdAt: json['created_at']?.toString() ?? '',
+      );
+}
+
+typedef PublicKey = DeployKey;
+
+class GistFile {
+  final String filename;
+  final String rawUrl;
+  final String content;
+
+  GistFile({
+    required this.filename,
+    required this.rawUrl,
+    required this.content,
+  });
+
+  factory GistFile.fromJson(Map<String, dynamic> json, {String? fallbackName}) {
+    return GistFile(
+      filename:
+          json['filename']?.toString() ?? fallbackName ?? '',
+      rawUrl: json['raw_url']?.toString() ?? '',
+      content: json['content']?.toString() ?? '',
+    );
+  }
+}
+
+class Gist {
+  final String id;
+  final String description;
+  final bool isPublic;
+  final List<GistFile> files;
+  final String ownerLogin;
+  final String ownerAvatar;
+  final int comments;
+  final String createdAt;
+  final String updatedAt;
+
+  Gist({
+    required this.id,
+    required this.description,
+    required this.isPublic,
+    required this.files,
+    required this.ownerLogin,
+    required this.ownerAvatar,
+    required this.comments,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory Gist.fromJson(Map<String, dynamic> json) {
+    final rawOwner = json['owner'];
+    final owner =
+        rawOwner is Map ? Map<String, dynamic>.from(rawOwner) : null;
+    final rawFiles = json['files'];
+    final files = <GistFile>[];
+    if (rawFiles is Map) {
+      rawFiles.forEach((name, value) {
+        if (value is Map) {
+          files.add(GistFile.fromJson(
+            Map<String, dynamic>.from(value),
+            fallbackName: name.toString(),
+          ));
+        }
+      });
+    }
+    return Gist(
+      id: json['id']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      isPublic: json['public'] == true,
+      files: files,
+      ownerLogin: owner?['login']?.toString() ?? '',
+      ownerAvatar: owner?['avatar_url']?.toString() ?? '',
+      comments: _intValue(json['comments']),
+      createdAt: json['created_at']?.toString() ?? '',
+      updatedAt: json['updated_at']?.toString() ?? '',
+    );
+  }
+}

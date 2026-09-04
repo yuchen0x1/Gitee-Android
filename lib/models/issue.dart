@@ -4,15 +4,18 @@ int _intVal(dynamic v) =>
     v is num ? v.toInt() : int.tryParse(v?.toString() ?? '') ?? 0;
 
 class Label {
+  final int id;
   final String name;
   final String color;
 
-  const Label({required this.name, required this.color});
+  const Label({this.id = 0, required this.name, required this.color});
 
   factory Label.fromJson(Map<String, dynamic> json) {
+    final rawId = json['id'];
     return Label(
+      id: rawId is num ? rawId.toInt() : int.tryParse(rawId?.toString() ?? '') ?? 0,
       name: json['name'] ?? '',
-      color: json['color'] ?? '',
+      color: (json['color'] ?? '').toString().replaceAll('#', ''),
     );
   }
 }
@@ -31,6 +34,8 @@ class Issue {
   final String repositoryFullName;
   final String repositoryOwner;
   final String repositoryName;
+  final int milestoneNumber;
+  final String milestoneTitle;
 
   Issue({
     required this.number,
@@ -46,6 +51,8 @@ class Issue {
     this.repositoryFullName = '',
     this.repositoryOwner = '',
     this.repositoryName = '',
+    this.milestoneNumber = 0,
+    this.milestoneTitle = '',
   });
 
   factory Issue.fromJson(Map<String, dynamic> json) {
@@ -54,6 +61,9 @@ class Issue {
     final rawRepository = json['repository'];
     final repository = rawRepository is Map
         ? Map<String, dynamic>.from(rawRepository)
+        : const <String, dynamic>{};
+    final milestoneMap = json['milestone'] is Map
+        ? Map<String, dynamic>.from(json['milestone'] as Map)
         : const <String, dynamic>{};
     var fullName = repository['full_name']?.toString() ?? '';
     if (fullName.isEmpty) {
@@ -86,6 +96,10 @@ class Issue {
       repositoryFullName: fullName,
       repositoryOwner: parts.isNotEmpty ? parts.first : '',
       repositoryName: parts.length > 1 ? parts.last : '',
+      milestoneNumber: milestoneMap['number'] is num
+          ? (milestoneMap['number'] as num).toInt()
+          : 0,
+      milestoneTitle: milestoneMap['title']?.toString() ?? '',
     );
   }
 }

@@ -27,6 +27,7 @@ import 'release_detail_page.dart';
 import 'repo_events_page.dart';
 import 'repo_file_browser_page.dart';
 import 'repo_tools_page.dart';
+import 'repo_subscribers_page.dart';
 
 /// 仓库详情页：概览、文件、Issues、Commits、Pull Requests、版本六个 Tab。
 class RepoDetailPage extends StatefulWidget {
@@ -622,6 +623,14 @@ class _OverviewTab extends StatelessWidget {
                       icon: Icons.visibility_outlined,
                       value: repo.watchers,
                       color: AppColors.textSecondary,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => RepoSubscribersPage(
+                            owner: owner,
+                            repo: repoName,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -738,16 +747,18 @@ class _StatBadge extends StatelessWidget {
   final IconData icon;
   final int value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatBadge({
     required this.icon,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final badge = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 18, color: color),
@@ -757,6 +768,12 @@ class _StatBadge extends StatelessWidget {
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
       ],
+    );
+    if (onTap == null) return badge;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
+      child: badge,
     );
   }
 }

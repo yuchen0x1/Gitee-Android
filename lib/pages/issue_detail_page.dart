@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../ai/ai_summary.dart';
 import '../api/gitee_api.dart';
 import '../models/issue.dart';
+import '../models/gitee_api_entities.dart' show Milestone;
 import '../models/issue_comment.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
@@ -166,6 +167,149 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  Future<void> _editLabels() async {
+    final issue = _issue;
+    if (issue == null || _actionInFlight) return;
+    List<Label> repoLabels;
+    try {
+      repoLabels = await GiteeApi.getRepoLabels(widget.owner, widget.repo);
+    } catch (e) {
+      _showMessage(e.toString());
+      return;
+    }
+    if (!mounted) return;
+    if (repoLabels.isEmpty) {
+      _showMessage('仓库还没有标签，可在仓库能力中心创建');
+      return;
+    }
+    final selected = issue.labels.map((l) => l.name).toSet();
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (dialogContext) {
+        var draft = Set<String>.from(selected);
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) => AlertDialog(
+            title: const Text('设置标签'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView(
+                shrinkWrap: true,
+                children: repoLabels
+                    .map(
+                      (label) => CheckboxListTile(
+                        dense: true,
+                        title: Text(label.name),
+                        value: draft.contains(label.name),
+                        onChanged: (checked) => setDialogState(() {
+                          checked == true
+                              ? draft.add(label.name)
+                              : draft.remove(label.name);
+                        }),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, draft),
+                child: const Text('保存'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (result == null) return;
+    setState(() => _actionInFlight = true);
+    try {
+      await GiteeApi.setIssueLabels(
+        owner: widget.owner,
+        repo: widget.repo,
+        number: widget.number,
+        labels: result.toList(),
+      );
+      await _load(refresh: true);
+      if (mounted) {
+        setState(() => _actionInFlight = false);
+        _showMessage('标签已更新');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _actionInFlight = false);
+        _showMessage(e.toString());
+      }
+    }
+  }
+
+  Future<void> _editMilestone() async {
+    final issue = _issue;
+    if (issue == null || _actionInFlight) return;
+    List<Milestone> milestones;
+    try {
+      milestones =
+          await GiteeApi.getMilestones(widget.owner, widget.repo, state: 'all');
+    } catch (e) {
+      _showMessage(e.toString());
+      return;
+    }
+    if (!mounted) return;
+    if (milestones.isEmpty) {
+      _showMessage('仓库还没有里程碑，可在仓库能力中心创建');
+      return;
+    }
+    const clearValue = -1;
+    final result = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('设置里程碑'),
+        children: [
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(dialogContext, clearValue),
+            child: const Text('无里程碑'),
+          ),
+          for (final milestone in milestones)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(dialogContext, milestone.id),
+              child: Row(
+                children: [
+                  Expanded(child: Text(milestone.title)),
+                  Text(
+                    milestone.state == 'open' ? '进行中' : '已关闭',
+                    style: Theme.of(dialogContext).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+    if (result == null) return;
+    setState(() => _actionInFlight = true);
+    try {
+      await GiteeApi.updateIssue(
+        owner: widget.owner,
+        repo: widget.repo,
+        number: widget.number,
+        milestone: result == clearValue ? 0 : result,
+      );
+      await _load(refresh: true);
+      if (mounted) {
+        setState(() => _actionInFlight = false);
+        _showMessage('里程碑已更新');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _actionInFlight = false);
+        _showMessage(e.toString());
+      }
+    }
+  }
+
   Future<void> _changeState(String state) async {
     final issue = _issue;
     if (issue == null || _actionInFlight || issue.state == state) return;
@@ -288,6 +432,24 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
               onPressed: _aiSummarize,
             ),
           PopupMenuButton<String>(
+            tooltip: '标签与里程碑',
+            icon: const Icon(Icons.tune),
+            onSelected: (value) {
+              if (value == 'labels') _editLabels();
+              if (value == 'milestone') _editMilestone();
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(
+                value: 'labels',
+                child: Text('设置标签'),
+              ),
+              PopupMenuItem(
+                value: 'milestone',
+                child: Text('设置里程碑'),
+              ),
+            ],
+          ),
+          PopupMenuButton<String>(
             onSelected: _changeState,
             itemBuilder: (_) => [
               PopupMenuItem(
@@ -313,7 +475,42 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
           padding: const EdgeInsets.all(16),
           itemCount: 2 + _comments.length + 1,
           itemBuilder: (context, index) {
-            if (index == 0) return _IssueHeader(issue: issue);
+            if (index == 0) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _IssueHeader(issue: issue),
+                  if (issue.labels.isNotEmpty || issue.milestoneTitle.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          if (issue.milestoneTitle.isNotEmpty)
+                            InputChip(
+                              avatar: const Icon(Icons.flag_outlined, size: 16),
+                              label: Text(issue.milestoneTitle),
+                              onPressed: _editMilestone,
+                            ),
+                          ...issue.labels.map(
+                            (label) => InputChip(
+                              avatar: Icon(Icons.circle,
+                                  size: 10,
+                                  color: label.color.isEmpty
+                                      ? AppColors.primaryRed
+                                      : Color(int.parse(
+                                          'FF${label.color}', radix: 16))),
+                              label: Text(label.name),
+                              onPressed: _editLabels,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              );
+            }
             if (index == 1) return _SectionTitle(count: issue.comments);
             final commentIndex = index - 2;
             if (commentIndex >= _comments.length) {

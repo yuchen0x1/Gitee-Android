@@ -1984,4 +1984,376 @@ class GiteeApi {
     );
     return _asList(data).map((e) => Event.fromJson(_asMap(e))).toList();
   }
+
+  // ---------- 仓库关注者 ----------
+
+  /// 仓库关注者（Watchers）列表。
+  static Future<List<User>> getRepoSubscribers(
+    String owner,
+    String repo, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/subscribers',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => User.fromJson(_asMap(e))).toList();
+  }
+
+  // ---------- 用户社交 ----------
+
+  /// 任意用户的关注列表。
+  static Future<List<User>> getUserFollowing(
+    String username, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/users/${_enc(username)}/following',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => User.fromJson(_asMap(e))).toList();
+  }
+
+  /// 任意用户的粉丝列表。
+  static Future<List<User>> getUserFollowers(
+    String username, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/users/${_enc(username)}/followers',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => User.fromJson(_asMap(e))).toList();
+  }
+
+  // ---------- 仓库标签 ----------
+
+  static Future<List<Label>> getRepoLabels(
+    String owner,
+    String repo, {
+    int page = 1,
+    int perPage = 100,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/labels',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => Label.fromJson(_asMap(e))).toList();
+  }
+
+  static Future<Label> createRepoLabel({
+    required String owner,
+    required String repo,
+    required String name,
+    required String color,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'POST',
+      '/repos/${_enc(owner)}/${_enc(repo)}/labels',
+      body: {'name': name, 'color': color},
+    );
+    return Label.fromJson(_asMap(data));
+  }
+
+  static Future<void> deleteRepoLabel(
+    String owner,
+    String repo,
+    int id,
+  ) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/labels/$id');
+  }
+
+  static Future<List<Label>> getIssueLabels(
+    String owner,
+    String repo,
+    String number,
+  ) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/issues/$number/labels',
+    );
+    return _asList(data).map((e) => Label.fromJson(_asMap(e))).toList();
+  }
+
+  /// 全量替换 Issue 的标签（传名称列表）。
+  static Future<void> setIssueLabels({
+    required String owner,
+    required String repo,
+    required String number,
+    required List<String> labels,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request(
+      'PUT',
+      '/repos/${_enc(owner)}/${_enc(repo)}/issues/$number/labels',
+      body: {'labels': labels},
+    );
+  }
+
+  // ---------- 里程碑 ----------
+
+  static Future<List<Milestone>> getMilestones(
+    String owner,
+    String repo, {
+    String state = 'open',
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/milestones',
+      query: {'state': state, ..._paging(page, perPage)},
+    );
+    return _asList(data).map((e) => Milestone.fromJson(_asMap(e))).toList();
+  }
+
+  static Future<Milestone> createMilestone({
+    required String owner,
+    required String repo,
+    required String title,
+    String? description,
+    String? dueOn,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'POST',
+      '/repos/${_enc(owner)}/${_enc(repo)}/milestones',
+      body: {
+        'title': title,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        if (dueOn != null && dueOn.isNotEmpty) 'due_on': dueOn,
+      },
+    );
+    return Milestone.fromJson(_asMap(data));
+  }
+
+  static Future<Milestone> updateMilestone({
+    required String owner,
+    required String repo,
+    required int id,
+    String? title,
+    String? state,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'PUT',
+      '/repos/${_enc(owner)}/${_enc(repo)}/milestones/$id',
+      body: {
+        if (title != null) 'title': title,
+        if (state != null) 'state': state,
+      },
+    );
+    return Milestone.fromJson(_asMap(data));
+  }
+
+  static Future<void> deleteMilestone(
+    String owner,
+    String repo,
+    int id,
+  ) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/milestones/$id');
+  }
+
+  // ---------- 部署公钥 ----------
+
+  static Future<List<DeployKey>> getDeployKeys(
+    String owner,
+    String repo, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/keys',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => DeployKey.fromJson(_asMap(e))).toList();
+  }
+
+  static Future<DeployKey> createDeployKey({
+    required String owner,
+    required String repo,
+    required String key,
+    required String title,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'POST',
+      '/repos/${_enc(owner)}/${_enc(repo)}/keys',
+      body: {'key': key, 'title': title},
+    );
+    return DeployKey.fromJson(_asMap(data));
+  }
+
+  static Future<void> deleteDeployKey(
+    String owner,
+    String repo,
+    int id,
+  ) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/keys/$id');
+  }
+
+  // ---------- SSH 公钥 ----------
+
+  static Future<List<PublicKey>> getPublicKeys({int page = 1}) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'GET',
+      '/user/keys',
+      query: _paging(page, 20),
+    );
+    return _asList(data).map((e) => PublicKey.fromJson(_asMap(e))).toList();
+  }
+
+  static Future<PublicKey> createPublicKey({
+    required String key,
+    required String title,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'POST',
+      '/user/keys',
+      body: {'key': key, 'title': title},
+    );
+    return PublicKey.fromJson(_asMap(data));
+  }
+
+  static Future<void> deletePublicKey(int id) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('DELETE', '/user/keys/$id');
+  }
+
+  // ---------- Gist 代码片段 ----------
+
+  /// 当前用户的代码片段。
+  static Future<List<Gist>> getGists({int page = 1, int perPage = 20}) async {
+    final data = await _request(
+      'GET',
+      '/gists',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => Gist.fromJson(_asMap(e))).toList();
+  }
+
+  static Future<Gist> getGistDetail(String id) async {
+    final data = await _request('GET', '/gists/${_enc(id)}');
+    return Gist.fromJson(_asMap(data));
+  }
+
+  static Future<Gist> createGist({
+    required Map<String, String> files,
+    String? description,
+    bool isPublic = true,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'POST',
+      '/gists',
+      body: {
+        'files': {
+          for (final e in files.entries)
+            e.key: {'content': e.value},
+        },
+        if (description != null && description.isNotEmpty)
+          'description': description,
+        'public': isPublic,
+      },
+    );
+    return Gist.fromJson(_asMap(data));
+  }
+
+  /// 编辑描述或新增/修改/删除文件（内容传 null 表示删除该文件）。
+  static Future<Gist> updateGist(
+    String id, {
+    String? description,
+    Map<String, String?>? files,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'PUT',
+      '/gists/${_enc(id)}',
+      body: {
+        if (description != null) 'description': description,
+        if (files != null)
+          'files': {
+            for (final e in files.entries)
+              e.key: {
+                if (e.value != null) 'content': e.value,
+              },
+          },
+      },
+    );
+    return Gist.fromJson(_asMap(data));
+  }
+
+  static Future<void> deleteGist(String id) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('DELETE', '/gists/${_enc(id)}');
+  }
+
+  static Future<void> starGist(String id) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('PUT', '/gists/${_enc(id)}/star');
+  }
+
+  static Future<void> unstarGist(String id) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request('DELETE', '/gists/${_enc(id)}/star');
+  }
+
+  // ---------- 提交评论 ----------
+
+  static Future<List<IssueComment>> getCommitComments(
+    String owner,
+    String repo,
+    String sha, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/commits/${_enc(sha)}/comments',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => IssueComment.fromJson(_asMap(e))).toList();
+  }
+
+  static Future<IssueComment> createCommitComment({
+    required String owner,
+    required String repo,
+    required String sha,
+    required String body,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    final data = await _request(
+      'POST',
+      '/repos/${_enc(owner)}/${_enc(repo)}/commits/${_enc(sha)}/comments',
+      body: {'body': body},
+    );
+    return IssueComment.fromJson(_asMap(data));
+  }
+
+  static Future<void> deleteCommitComment(
+    String owner,
+    String repo,
+    int id,
+  ) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request(
+      'DELETE',
+      '/repos/${_enc(owner)}/${_enc(repo)}/comments/$id',
+    );
+  }
 }
