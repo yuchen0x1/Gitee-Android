@@ -11,6 +11,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
 import '../widgets/user_tile.dart';
+import '../utils/launch_url.dart';
 import 'issue_detail_page.dart';
 
 enum _SearchType { repo, user, issue }
@@ -437,8 +438,17 @@ class _SearchPageState extends State<SearchPage> {
       return ErrorState(message: _error!, onRetry: () => _search());
     }
     if (items == 0) {
-      return const EmptyState(
-          icon: Icons.search_off, title: '没有找到相关内容', subtitle: '换个关键词或筛选条件试试');
+      return EmptyState(
+        icon: Icons.search_off,
+        title: '没有找到相关内容',
+        subtitle: 'Gitee 官方搜索接口当前不稳定，部分关键词可能返回空结果。\n'
+            '可尝试在 Gitee 网页搜索「$_lastQuery」。',
+        actionLabel: '在 Gitee 网页搜索',
+        actionIcon: Icons.open_in_browser_rounded,
+        onAction: () => launchExternalUrl(
+          'https://so.gitee.com/?q=${Uri.encodeComponent(_lastQuery)}',
+        ),
+      );
     }
     return RefreshIndicator(
         color: AppColors.primaryRed,

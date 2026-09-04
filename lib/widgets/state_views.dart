@@ -9,6 +9,7 @@ class EmptyState extends StatelessWidget {
   final String? subtitle;
   final String? actionLabel;
   final VoidCallback? onAction;
+  final IconData? actionIcon;
 
   const EmptyState({
     super.key,
@@ -17,6 +18,7 @@ class EmptyState extends StatelessWidget {
     this.subtitle,
     this.actionLabel,
     this.onAction,
+    this.actionIcon,
   });
 
   @override
@@ -47,7 +49,7 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: onAction,
-                icon: const Icon(Icons.refresh),
+                icon: Icon(actionIcon ?? Icons.refresh),
                 label: Text(actionLabel!),
               ),
             ],
