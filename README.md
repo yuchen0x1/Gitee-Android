@@ -182,6 +182,15 @@ flutter build windows --release
 
 **发布新版本**：仓库内置 Release 工作流（见下节），发布时需保证 `pubspec.yaml` 的 `version`（如 `2.0.2+5` 中的 `2.0.2`）与推送的 `v*` 标签一致（如 `v2.0.2`），工作流会在构建前校验两者，不一致将直接失败。客户端的更新检查同样依据该版本号判断是否有新版本。
 
+功能升级后的完整发布流程：
+
+1. 提升 `pubspec.yaml` 的 `version` 并提交；
+2. 打标签并推送：`git tag v<版本> && git push origin main v<版本>`；
+3. 构建安装包：`flutter build apk --release` 与 `flutter build windows --release`（注意：release 构建必须在纯 ASCII 路径下进行，中文路径会导致 AOT 快照失败，可维护一份如 `C:\gitee-client-build` 的构建副本，发布前同步源码）；
+4. 在 Gitee「发行版」页面创建发行版（选择标签）并上传 APK 与 Windows `Release` 目录的 ZIP；
+
+> 注意：Gitee 的发行版与标签绑定，**已发布发行版的标签不要删除或强推**，否则发行版会一并消失。
+
 ## 运行测试
 
 ```bash
