@@ -81,12 +81,12 @@ class UpdateService {
 
     try {
       final release = await _fetchGiteeRelease();
-      final update = _newerReleaseOrNull(release, version);
-      if (update != null) return update;
+      // Gitee 是唯一发行通道：成功返回即以它为准，
+      // 不再为镜像滞后核对已冻结的 GitHub 通道（避免无谓超时与误报）。
+      return _newerReleaseOrNull(release, version);
     } catch (_) {
       // Gitee 受限、限流或不可达时回退 GitHub。
     }
-    // Gitee 可能是延迟同步的镜像；即使它成功返回旧版本，也继续检查 GitHub。
     return _checkGitHubRelease(version);
   }
 

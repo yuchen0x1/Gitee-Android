@@ -173,14 +173,17 @@ void main() {
     expect(update?.version, 'v2.1.0');
   });
 
-  test('Gitee 镜像落后时继续检查 GitHub 最新版本', () async {
+  test('Gitee 成功返回时以 Gitee 为准，不再核对 GitHub', () async {
     final stale = Map<String, dynamic>.from(releaseJson)
       ..['tag_name'] = 'v2.0.0';
+    var githubCalls = 0;
     final service = UpdateService(
       client: MockClient((request) async {
         if (request.url.host == 'gitee.com') {
-          return http.Response(jsonEncode(stale), 200);
+          return http.Response(jsonEncode(stale), 200,
+              headers: {'content-type': 'application/json; charset=utf-8'});
         }
+        githubCalls++;
         return http.Response(
           jsonEncode(releaseJson),
           200,
@@ -188,7 +191,24 @@ void main() {
         );
       }),
     );
+    // Gitee 返回与当前版本一致的 v2.0.0：视为已最新，不触发 GitHub 兜底。
     final update = await service.checkForUpdate(currentVersion: '2.0.0');
-    expect(update?.version, 'v2.1.0');
+    expect(update, isNull);
+    expect(githubCalls, 0);
+  });
+
+  test('Gitee 与 GitHub 均失败时抛出异常', () async {
+    final service = UpdateService(
+      client: MockClient((request) async {
+        if (request.url.host == 'gitee.com') {
+          return http.Response('', 403);
+        }
+        return http.Response('', 500);
+      }),
+    );
+    await expectLater(
+      service.checkForUpdate(currentVersion: '2.0.0'),
+      throwsA(isA<UpdateCheckException>()),
+    );
   });
 }
