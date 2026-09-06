@@ -5,40 +5,28 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/app_update.dart';
 
-/// 更新通道。默认先检查 Gitee，再回退 GitHub。
-enum UpdateChannel { gitee, github }
-
 /// 公开 Release 在线更新服务。
 ///
-/// 更新检查不需要登录，也不会发送 Gitee Token。Gitee 适合国内网络，
-/// GitHub 作为跨网络环境的回退来源。
+/// 更新检查不需要登录，也不会发送 Gitee Token。Gitee 是唯一发行通道：
+/// 先查 Open API，被限流或不可达时回退 Gitee 网页版发布页。
 class UpdateService {
   static final shared = UpdateService();
 
-  UpdateService({http.Client? client, UpdateChannel? preferredChannel})
-      : _client = client ?? http.Client(),
-        _preferredChannel = preferredChannel;
+  UpdateService({http.Client? client}) : _client = client ?? http.Client();
 
   static const repositoryOwner = 'yuchen0x1';
   static const repositoryName = 'gitee-mobile-client';
-  static const latestReleaseUrl =
-      'https://api.github.com/repos/$repositoryOwner/$repositoryName/releases/latest';
-  static const latestReleasePageUrl =
-      'https://github.com/$repositoryOwner/$repositoryName/releases/latest';
   static const giteeLatestReleaseUrl =
       'https://gitee.com/api/v5/repos/$repositoryOwner/$repositoryName/releases/latest';
+  static const giteeLatestReleasePageUrl =
+      'https://gitee.com/$repositoryOwner/$repositoryName/releases/latest';
   static const giteeReleasePageBaseUrl =
       'https://gitee.com/$repositoryOwner/$repositoryName/releases';
 
-  static const _allowedHosts = {
-    'gitee.com',
-    'api.github.com',
-    'github.com',
-  };
+  static const _allowedHosts = {'gitee.com'};
   static const _requestUserAgent = 'Gitee-Client-Update-Checker';
 
   final http.Client _client;
-  final UpdateChannel? _preferredChannel;
   AppUpdate? _cachedUpdate;
   String? _cachedForVersion;
   DateTime? _lastCheckedAt;
@@ -75,19 +63,14 @@ class UpdateService {
   }
 
   Future<AppUpdate?> _checkForUpdate(String version) async {
-    if (_preferredChannel == UpdateChannel.github) {
-      return _checkGitHubRelease(version);
-    }
-
     try {
       final release = await _fetchGiteeRelease();
-      // Gitee 是唯一发行通道：成功返回即以它为准，
-      // 不再为镜像滞后核对已冻结的 GitHub 通道（避免无谓超时与误报）。
+      // Gitee 是唯一发行通道：成功返回即以它为准。
       return _newerReleaseOrNull(release, version);
     } catch (_) {
-      // Gitee 受限、限流或不可达时回退 GitHub。
+      // API 受限、限流或不可达时回退 Gitee 网页版发布页。
     }
-    return _checkGitHubRelease(version);
+    return _checkGiteeReleasePage(version);
   }
 
   Future<AppUpdate> _fetchGiteeRelease() async {
@@ -111,52 +94,13 @@ class UpdateService {
     );
   }
 
-  Future<AppUpdate?> _checkGitHubRelease(String currentVersion) async {
-    try {
-      final response = await _client.get(
-        _validatedUri(latestReleaseUrl),
-        headers: const {
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'User-Agent': _requestUserAgent,
-        },
-      ).timeout(const Duration(seconds: 12));
-
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final decoded = jsonDecode(utf8.decode(response.bodyBytes));
-        if (decoded is! Map) {
-          throw const UpdateCheckException('更新服务返回了无效数据');
-        }
-        return _newerReleaseOrNull(
-          AppUpdate.fromGitHubJson(Map<String, dynamic>.from(decoded)),
-          currentVersion,
-        );
-      }
-      if (response.statusCode != 403 && response.statusCode != 404) {
-        throw UpdateCheckException('更新服务暂时不可用（${response.statusCode}）');
-      }
-    } on UpdateCheckException catch (error) {
-      if (!error.message.contains('暂时不可用')) rethrow;
-    } catch (_) {
-      // 页面重定向兜底可能仍可用。
-    }
-
-    return _checkReleasePage(currentVersion);
-  }
-
-  AppUpdate? _newerReleaseOrNull(AppUpdate release, String currentVersion) {
-    if (release.version.isEmpty ||
-        compareAppVersions(release.version, currentVersion) <= 0) {
-      return null;
-    }
-    return release;
-  }
-
-  Future<AppUpdate?> _checkReleasePage(String currentVersion) async {
+  /// 网页版兜底：/releases/latest 会 302 到 /releases/tag/{tag}，
+  /// 且不占用 Open API 的匿名限流配额。
+  Future<AppUpdate?> _checkGiteeReleasePage(String currentVersion) async {
     final response = await _client.get(
-      _validatedUri(latestReleasePageUrl),
+      _validatedUri(giteeLatestReleasePageUrl),
       headers: const {'User-Agent': _requestUserAgent},
-    ).timeout(const Duration(seconds: 12));
+    ).timeout(const Duration(seconds: 8));
     if (response.statusCode < 200 || response.statusCode >= 400) {
       throw UpdateCheckException('更新服务暂时不可用（${response.statusCode}）');
     }
@@ -173,12 +117,20 @@ class UpdateService {
         version: version,
         name: version,
         notes: '',
-        htmlUrl: finalUrl.isEmpty ? latestReleasePageUrl : finalUrl,
+        htmlUrl: finalUrl.isEmpty ? giteeLatestReleasePageUrl : finalUrl,
         publishedAt: '',
         assets: const [],
       ),
       currentVersion,
     );
+  }
+
+  AppUpdate? _newerReleaseOrNull(AppUpdate release, String currentVersion) {
+    if (release.version.isEmpty ||
+        compareAppVersions(release.version, currentVersion) <= 0) {
+      return null;
+    }
+    return release;
   }
 
   Future<String> _currentVersion() async {
