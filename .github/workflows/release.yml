@@ -66,34 +66,9 @@ jobs:
           name: android-release-assets
           path: release-assets/*
 
-  windows:
-    name: Windows desktop package
-    needs: validate
-    runs-on: windows-latest
-    env:
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - run: flutter config --enable-windows-desktop
-      - run: flutter pub get
-      - run: flutter build windows --release
-      - name: Package Windows application
-        shell: pwsh
-        run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath "gitee-client-${env:RELEASE_TAG}-windows-x64.zip"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-release-assets
-          path: gitee-client-*-windows-x64.zip
-
   publish:
     name: Publish GitHub Release
-    needs: [validate, android, windows]
+    needs: [validate, android]
     runs-on: ubuntu-latest
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.release_tag || github.ref_name }}
