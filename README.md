@@ -2,13 +2,13 @@
 
 > 基于 Flutter 打造的 Gitee（码云）非官方客户端 —— 在手机上刷通知、读代码、回 Issue、审 PR。
 
-![Release](https://img.shields.io/gitee/v/yuchen0x1/gitee-mobile-client) ![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Windows-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
+![Release](https://img.shields.io/gitee/v/yuchen0x1/gitee-mobile-client) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
 
 > **声明**：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力（Open API v5）为开发者提供便利。
 
 ## 项目简介
 
-Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机和桌面上。如果你需要在通勤、出差或碎片时间里跟进仓库动态、回复 Issue、审阅 Pull Request，又不想打开浏览器或桌面 IDE，它就是为此准备的。
+Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果你需要在通勤、出差或碎片时间里跟进仓库动态、回复 Issue、审阅 Pull Request，又不想打开浏览器或桌面 IDE，它就是为此准备的。
 
 所有请求都直接使用你自己的 Gitee 凭证（私人令牌或 OAuth 访问令牌）访问 Gitee 官方 API，项目不依赖任何自建后端，不内置代理账号，令牌保存在系统安全存储中。
 
@@ -68,7 +68,6 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机和桌面上
 | 平台 | 形态 | 获取方式 |
 | --- | --- | --- |
 | Android | 通用 APK、分架构 APK、App Bundle | [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) |
-| Windows | x64 便携版 ZIP（免安装） | [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) |
 
 ## 系统要求
 
@@ -79,8 +78,7 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机和桌面上
 | Flutter | 3.x（stable 渠道） |
 | Dart SDK | >=3.0.0 <4.0.0（随 Flutter 附带） |
 | JDK | 17（Android 构建需要） |
-| Android SDK | 通过 Android Studio 或命令行工具安装（Android 构建需要） |
-| Visual C++ 工具链 | 含 CMake 与 Windows SDK（Windows 构建需要） |
+| Android SDK | 通过 Android Studio 或命令行工具安装 |
 
 装好后先自检：
 
@@ -131,10 +129,11 @@ flutter run
 | AI 设置 | 配置 AI 摘要的 API Key、Base URL、Model |
 | 清除缓存 | 清理图片缓存 |
 | 检查更新 | 手动检查新版本 |
+| 更新日志 | 查看历史版本的发布说明 |
 
 **AI 摘要（可选）**：在「我的 → AI 设置」中填入 OpenAI 兼容接口的 API Key 即可启用，用于把 Issue / PR 浓缩为中文摘要。默认对接 DeepSeek（`https://api.deepseek.com`，模型 `deepseek-chat`），Base URL 和 Model 均可在设置页修改为其他 OpenAI 兼容服务。不配置则该功能不生效，不影响其他功能。
 
-**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查优先访问 Gitee 公开 Release，失败或限流时自动回退 GitHub；检查不需要登录，不会发送 Gitee 令牌；结果在应用进程内缓存 10 分钟。发现新版本时，Android 直接下载通用 APK，Windows 下载 x64 便携 ZIP。
+**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查访问 Gitee 公开 Release，API 被限流时自动回退 Gitee 网页版发布页；检查不需要登录，不会发送 Gitee 令牌；结果在应用进程内缓存 10 分钟。发现新版本时，Android 直接下载通用 APK。
 
 ## 项目结构
 
@@ -153,7 +152,6 @@ gitee-mobile-client/
 │   └── widgets/          # 通用组件：分页列表、Markdown 渲染、骨架屏等
 ├── test/                 # 单元测试与组件测试（9 个测试文件）
 ├── android/              # Android 平台配置（含 gitee:// 深链注册）
-├── windows/              # Windows 桌面平台配置
 ├── .github/workflows/    # CI 与 Release 工作流
 └── pubspec.yaml          # 依赖与版本号（发布版本以此为准）
 ```
@@ -170,15 +168,11 @@ flutter build apk --release
 # Android 分架构 APK / App Bundle
 flutter build apk --release --split-per-abi
 flutter build appbundle --release
-
-# Windows x64 Release
-flutter build windows --release
 ```
 
 产物位置：
 
 - Android APK：`build/app/outputs/flutter-apk/`（Release 通用包为 `app-release.apk`）
-- Windows：`build/windows/x64/runner/Release/`（整个目录即为便携版，可打包为 ZIP）
 
 **发布新版本**：仓库内置 Release 工作流（见下节），发布时需保证 `pubspec.yaml` 的 `version`（如 `2.0.2+5` 中的 `2.0.2`）与推送的 `v*` 标签一致（如 `v2.0.2`），工作流会在构建前校验两者，不一致将直接失败。客户端的更新检查同样依据该版本号判断是否有新版本。
 
@@ -186,8 +180,8 @@ flutter build windows --release
 
 1. 提升 `pubspec.yaml` 的 `version` 并提交；
 2. 打标签并推送：`git tag v<版本> && git push origin main v<版本>`；
-3. 构建安装包：`flutter build apk --release` 与 `flutter build windows --release`（注意：release 构建必须在纯 ASCII 路径下进行，中文路径会导致 AOT 快照失败，可维护一份如 `C:\gitee-client-build` 的构建副本，发布前同步源码）；
-4. 在 Gitee「发行版」页面创建发行版（选择标签）并上传 APK 与 Windows `Release` 目录的 ZIP；
+3. 构建安装包：`flutter build apk --release`；
+4. 在 Gitee「发行版」页面创建发行版（选择标签）并上传 APK；
 
 > 注意：Gitee 的发行版与标签绑定，**已发布发行版的标签不要删除或强推**，否则发行版会一并消失。
 
@@ -207,8 +201,8 @@ flutter test
 
 仓库内置两套 GitHub Actions 工作流（`.github/workflows/`）：
 
-- **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK；Windows 上执行分析、测试并构建 Windows 桌面产物。
-- **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB）与 Windows x64 ZIP，并把这些产物发布为对应版本的 Release。
+- **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK。
+- **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB），并把这些产物发布为对应版本的 Release。
 
 发布产物统一在仓库的 [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) 页面下载。
 
@@ -218,13 +212,13 @@ flutter test
 不需要。应用直连 Gitee Open API v5，唯一的外部可选依赖是你在 AI 设置中填写的 OpenAI 兼容摘要接口。
 
 **令牌存在哪里，安全吗？**
-令牌保存在系统安全存储（Android Keystore / Windows 凭据管理等，由 flutter_secure_storage 提供）。从旧版本升级时，明文令牌会自动迁移到安全存储并删除原文件。
+令牌保存在系统安全存储（Android Keystore，由 flutter_secure_storage 提供）。从旧版本升级时，明文令牌会自动迁移到安全存储并删除原文件。
 
 **部分操作提示无权限？**
 写入类操作（创建 Issue / PR、编辑文件、管理 Webhook 等）要求令牌具备对应权限，请到 Gitee 重新生成令牌并勾选所需 scope。
 
 **更新检查提示失败？**
-更新检查优先访问 Gitee 公开 Release，失败时回退 GitHub。两者都不可达通常是当前网络受限，可稍后在「我的 → 设置 → 检查更新」重试；检查结果缓存 10 分钟，手动检查会强制刷新。
+更新检查只访问 Gitee 公开 Release（Open API 被限流时自动回退 Gitee 网页版发布页），不会访问 GitHub。两者都失败通常是当前网络无法连接 Gitee，可稍后在「我的 → 设置 → 检查更新」重试；检查结果缓存 10 分钟，手动检查会强制刷新。
 
 **搜索结果来自哪里？**
 仓库搜索使用 Gitee 网页搜索（so.gitee.com）同款数据源——Gitee Open API v5 的搜索接口存在服务端已知问题（即使令牌有效也可能返回空结果），因此仓库搜索不依赖该接口；用户与 Issue 搜索仍走 Open API v5。搜索为空时也可点击「在 Gitee 网页搜索」跳转网页版验证。

@@ -14,6 +14,7 @@ import '../widgets/skeleton_list.dart';
 import '../widgets/update_dialog.dart';
 import 'followers_page.dart';
 import 'ai_settings_page.dart';
+import 'app_changelog_page.dart';
 import 'demo_page.dart';
 import 'following_page.dart';
 import 'my_issues_page.dart';
@@ -207,6 +208,19 @@ class _ProfilePageState extends State<ProfilePage> {
                                   trailing: const Icon(Icons.chevron_right,
                                       color: AppColors.textTertiary),
                                   onTap: _checkForUpdate,
+                                ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.history_edu,
+                                      color: AppColors.primaryRed),
+                                  title: const Text('更新日志'),
+                                  subtitle: const Text('查看各版本的功能与修复'),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      color: AppColors.textTertiary),
+                                  onTap: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) => const AppChangelogPage()),
+                                  ),
                                 ),
                                 const Divider(),
                                 ListTile(
