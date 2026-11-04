@@ -2081,13 +2081,17 @@ class GiteeApi {
     return Label.fromJson(_asMap(data));
   }
 
+  /// 按标签名删除；现行 API 已改为按 name 寻址（旧版按 id 会 404）。
   static Future<void> deleteRepoLabel(
     String owner,
     String repo,
-    int id,
+    String name,
   ) async {
     if (GiteeApi.token == null) throw GiteeApiException('请先登录');
-    await _request('DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/labels/$id');
+    await _request(
+      'DELETE',
+      '/repos/${_enc(owner)}/${_enc(repo)}/labels/${_enc(name)}',
+    );
   }
 
   static Future<List<Label>> getIssueLabels(
@@ -2164,7 +2168,7 @@ class GiteeApi {
   }) async {
     if (GiteeApi.token == null) throw GiteeApiException('请先登录');
     final data = await _request(
-      'PUT',
+      'PATCH',
       '/repos/${_enc(owner)}/${_enc(repo)}/milestones/$id',
       body: {
         if (title != null) 'title': title,

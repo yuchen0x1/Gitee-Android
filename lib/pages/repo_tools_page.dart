@@ -171,7 +171,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
 
   Future<void> _deleteLabel(Label label) async {
     try {
-      await GiteeApi.deleteRepoLabel(widget.owner, widget.repo, label.id);
+      await GiteeApi.deleteRepoLabel(widget.owner, widget.repo, label.name);
       await _loadExtras();
     } catch (e) {
       _showError(e);
