@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
+import '../models/namespace.dart';
 import '../theme/app_theme.dart';
 
 /// 创建个人仓库，直接调用 Gitee POST /user/repos。
+/// 归属空间 / License / .gitignore 模板来自官方模板接口，加载失败时不阻塞表单。
 class CreateRepoPage extends StatefulWidget {
   const CreateRepoPage({super.key});
 
@@ -20,6 +22,41 @@ class _CreateRepoPageState extends State<CreateRepoPage> {
   bool _hasWiki = true;
   bool _loading = false;
   String? _error;
+
+  List<Namespace> _namespaces = [];
+  List<String> _licenses = [];
+  List<String> _gitignores = [];
+  Namespace? _selectedNamespace;
+  String? _selectedLicense;
+  String? _selectedGitignore;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOptions();
+  }
+
+  Future<void> _loadOptions() async {
+    // 模板数据属于增强信息，任一失败不影响创建流程。
+    try {
+      final namespaces = await GiteeApi.getUserNamespaces();
+      if (!mounted) return;
+      setState(() {
+        _namespaces = namespaces;
+        if (namespaces.isNotEmpty) _selectedNamespace = namespaces.first;
+      });
+    } catch (_) {}
+    try {
+      final licenses = await GiteeApi.getLicenseTemplates();
+      if (!mounted) return;
+      setState(() => _licenses = licenses);
+    } catch (_) {}
+    try {
+      final gitignores = await GiteeApi.getGitignoreTemplates();
+      if (!mounted) return;
+      setState(() => _gitignores = gitignores);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +89,61 @@ class _CreateRepoPageState extends State<CreateRepoPage> {
                 alignLabelWithHint: true,
               ),
             ),
+            if (_namespaces.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              DropdownMenu<Namespace>(
+                initialSelection: _selectedNamespace,
+                expandedInsets: EdgeInsets.zero,
+                leadingIcon: const Icon(Icons.account_balance_outlined),
+                label: const Text('归属空间'),
+                dropdownMenuEntries: _namespaces
+                    .map(
+                      (ns) => DropdownMenuEntry<Namespace>(
+                        value: ns,
+                        label: ns.isOrganization ? '${ns.name}（组织）' : ns.name,
+                      ),
+                    )
+                    .toList(),
+                onSelected: (value) => setState(() => _selectedNamespace = value),
+              ),
+            ],
+            if (_licenses.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              DropdownMenu<String>(
+                enableFilter: true,
+                expandedInsets: EdgeInsets.zero,
+                leadingIcon: const Icon(Icons.gavel_outlined),
+                label: const Text('License 协议（可选）'),
+                dropdownMenuEntries: _licenses
+                    .map(
+                      (license) => DropdownMenuEntry<String>(
+                        value: license,
+                        label: license,
+                      ),
+                    )
+                    .toList(),
+                onSelected: (value) => setState(() => _selectedLicense = value),
+              ),
+            ],
+            if (_gitignores.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              DropdownMenu<String>(
+                enableFilter: true,
+                expandedInsets: EdgeInsets.zero,
+                leadingIcon: const Icon(Icons.filter_none_outlined),
+                label: const Text('.gitignore 模板（可选）'),
+                dropdownMenuEntries: _gitignores
+                    .map(
+                      (template) => DropdownMenuEntry<String>(
+                        value: template,
+                        label: template,
+                      ),
+                    )
+                    .toList(),
+                onSelected: (value) =>
+                    setState(() => _selectedGitignore = value),
+              ),
+            ],
             const SizedBox(height: 18),
             Card(
               child: Column(
@@ -127,6 +219,9 @@ class _CreateRepoPageState extends State<CreateRepoPage> {
         autoInit: _autoInit,
         hasIssues: _hasIssues,
         hasWiki: _hasWiki,
+        namespace: _selectedNamespace?.path,
+        licenseTemplate: _selectedLicense,
+        gitignoreTemplate: _selectedGitignore,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {

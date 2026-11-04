@@ -1,15 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../ai/ai_summary.dart';
 import '../api/gitee_api.dart';
 import '../models/issue.dart';
 import '../models/gitee_api_entities.dart' show Milestone;
 import '../models/issue_comment.dart';
+import '../models/pull_request.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 import '../widgets/app_markdown.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
+import 'pr_detail_page.dart';
 
 /// Issue 详情页：标题、状态、正文 Markdown 与评论列表。
 class IssueDetailPage extends StatefulWidget {
@@ -40,6 +44,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   bool _hasMore = true;
   int _page = 1;
   String? _error;
+  List<PullRequest> _relatedPRs = [];
 
   @override
   void initState() {
@@ -78,6 +83,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
         if (comments.length < 20) _hasMore = false;
         _page++;
       });
+      unawaited(_loadRelatedPRs());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -108,6 +114,21 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
       });
     } catch (_) {
       if (mounted) setState(() => _commentsLoading = false);
+    }
+  }
+
+  /// 关联 PR 属于增强信息，失败时不展示，不影响主体内容。
+  Future<void> _loadRelatedPRs() async {
+    try {
+      final prs = await GiteeApi.getIssuePullRequests(
+        widget.owner,
+        widget.number,
+        repo: widget.repo,
+      );
+      if (!mounted || prs.isEmpty) return;
+      setState(() => _relatedPRs = prs);
+    } catch (_) {
+      // 关联 PR 接口异常时保持空列表。
     }
   }
 
@@ -506,6 +527,68 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                             ),
                           ),
                         ],
+                      ),
+                    ),
+                  if (_relatedPRs.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Card(
+                        margin: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('关联 PR (${_relatedPRs.length})',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleMedium),
+                              const SizedBox(height: 4),
+                              ..._relatedPRs.map(
+                                (pr) => ListTile(
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: Icon(
+                                    pr.state == 'merged'
+                                        ? Icons.merge_outlined
+                                        : Icons.call_split_outlined,
+                                    size: 20,
+                                    color: pr.state == 'merged'
+                                        ? AppColors.success
+                                        : pr.state == 'closed'
+                                            ? AppColors.closed
+                                            : AppColors.primaryRed,
+                                  ),
+                                  title: Text(
+                                    pr.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style:
+                                        Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                  subtitle: Text(
+                                      'PR #${pr.number} · ${pr.state}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      size: 18),
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => PullRequestDetailPage(
+                                          owner: widget.owner,
+                                          repo: widget.repo,
+                                          number: pr.number,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                 ],

@@ -499,7 +499,11 @@ class _RepoDetailPageState extends State<RepoDetailPage>
             onTap: (release) async {
               await Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ReleaseDetailPage(release: release),
+                  builder: (_) => ReleaseDetailPage(
+                    release: release,
+                    owner: widget.owner,
+                    repo: widget.repo,
+                  ),
                 ),
               );
               _refreshAfterReturn(5);

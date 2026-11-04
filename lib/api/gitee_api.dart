@@ -1,15 +1,19 @@
 import 'dart:convert';
 import 'api_client.dart';
+import '../models/check_run.dart';
 import '../models/commit.dart';
 import '../models/event.dart';
 import '../models/file.dart';
 import '../models/issue.dart';
 import '../models/issue_comment.dart';
 import '../models/gitee_api_entities.dart';
+import '../models/namespace.dart';
 import '../models/notification.dart';
 import '../models/pull_request.dart';
 import '../models/release.dart';
+import '../models/release_attach_file.dart';
 import '../models/repo.dart';
+import '../models/repo_traffic.dart';
 import '../models/user.dart';
 
 /// Gitee Open API v5 封装。
@@ -1038,6 +1042,24 @@ class GiteeApi {
     return Issue.fromJson(_asMap(data));
   }
 
+  /// 获取 Issue 关联的 Pull Request 列表（注意路径无 repo 段，可传 repo 过滤）。
+  static Future<List<PullRequest>> getIssuePullRequests(
+    String owner,
+    String number, {
+    String? repo,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final query = <String, String>{..._paging(page, perPage)};
+    if (repo != null && repo.isNotEmpty) query['repo'] = repo;
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/issues/$number/pull_requests',
+      query: query,
+    );
+    return _asList(data).map((e) => PullRequest.fromJson(_asMap(e))).toList();
+  }
+
   // ---------- Commit ----------
 
   static Future<List<Commit>> getCommits(
@@ -1067,6 +1089,22 @@ class GiteeApi {
       '/repos/${_enc(owner)}/${_enc(repo)}/commits/${_enc(sha)}',
     );
     return Commit.fromJson(_asMap(data));
+  }
+
+  /// 获取某个提交的 CI 检查项（Gitee Go）。
+  static Future<List<CheckRun>> getCommitCheckRuns(
+    String owner,
+    String repo,
+    String ref, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/commits/${_enc(ref)}/check-runs',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => CheckRun.fromJson(_asMap(e))).toList();
   }
 
   // ---------- Pull Request ----------
@@ -1401,6 +1439,22 @@ class GiteeApi {
         .toList();
   }
 
+  /// 获取 PR 关联的 Issue 列表。
+  static Future<List<Issue>> getPullRequestIssues(
+    String owner,
+    String repo,
+    int number, {
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/pulls/$number/issues',
+      query: _paging(page, perPage),
+    );
+    return _asList(data).map((e) => Issue.fromJson(_asMap(e))).toList();
+  }
+
   // ---------- Release ----------
 
   // ---------- 仓库动态 ----------
@@ -1420,6 +1474,18 @@ class GiteeApi {
       },
     );
     return _asList(data).map((e) => Event.fromJson(_asMap(e))).toList();
+  }
+
+  /// 仓库近 30 天访问统计（浏览 IP / 拉取 / 推送 / ZIP 下载数）。
+  static Future<RepoTraffic> getRepoTraffic(
+    String owner,
+    String repo,
+  ) async {
+    final data = await _request(
+      'POST',
+      '/repos/${_enc(owner)}/${_enc(repo)}/traffic-data',
+    );
+    return RepoTraffic.fromJson(_asMap(data));
   }
 
   // ---------- 版本发布 ----------
@@ -1527,6 +1593,55 @@ class GiteeApi {
     if (GiteeApi.token == null) throw GiteeApiException('请先登录');
     await _request(
         'DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/releases/$id');
+  }
+
+  // ---------- Release 附件 ----------
+
+  static Future<List<ReleaseAttachFile>> getReleaseAttachFiles(
+    String owner,
+    String repo,
+    int releaseId, {
+    int page = 1,
+    int perPage = 50,
+  }) async {
+    final data = await _request(
+      'GET',
+      '/repos/${_enc(owner)}/${_enc(repo)}/releases/$releaseId/attach_files',
+      query: _paging(page, perPage),
+    );
+    return _asList(data)
+        .map((e) => ReleaseAttachFile.fromJson(_asMap(e)))
+        .toList();
+  }
+
+  /// 上传附件到指定 Release（multipart/form-data）。
+  static Future<void> uploadReleaseAttachFile({
+    required String owner,
+    required String repo,
+    required int releaseId,
+    required List<int> fileBytes,
+    required String filename,
+  }) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _client.uploadMultipart(
+      '/repos/${_enc(owner)}/${_enc(repo)}/releases/$releaseId/attach_files',
+      fileField: 'file',
+      fileBytes: fileBytes,
+      filename: filename,
+    );
+  }
+
+  static Future<void> deleteReleaseAttachFile(
+    String owner,
+    String repo,
+    int releaseId,
+    int attachFileId,
+  ) async {
+    if (GiteeApi.token == null) throw GiteeApiException('请先登录');
+    await _request(
+      'DELETE',
+      '/repos/${_enc(owner)}/${_enc(repo)}/releases/$releaseId/attach_files/$attachFileId',
+    );
   }
 
   // ---------- 订阅 / Watch ----------
@@ -2185,6 +2300,26 @@ class GiteeApi {
   ) async {
     if (GiteeApi.token == null) throw GiteeApiException('请先登录');
     await _request('DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/milestones/$id');
+  }
+
+  // ---------- 模板与命名空间 ----------
+
+  /// 创建仓库时可用的归属空间（个人 / 组织）。
+  static Future<List<Namespace>> getUserNamespaces() async {
+    final data = await _request('GET', '/user/namespaces');
+    return _asList(data).map((e) => Namespace.fromJson(_asMap(e))).toList();
+  }
+
+  /// 可选的开源许可协议列表（返回 key 字符串数组，如 Apache-2.0）。
+  static Future<List<String>> getLicenseTemplates() async {
+    final data = await _request('GET', '/licenses');
+    return _asList(data).map((e) => e.toString()).toList();
+  }
+
+  /// 可选的 .gitignore 模板列表（返回名称字符串数组）。
+  static Future<List<String>> getGitignoreTemplates() async {
+    final data = await _request('GET', '/gitignore/templates');
+    return _asList(data).map((e) => e.toString()).toList();
   }
 
   // ---------- 部署公钥 ----------

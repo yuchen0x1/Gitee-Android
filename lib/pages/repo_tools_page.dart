@@ -3,6 +3,7 @@ import '../api/gitee_api.dart';
 import '../models/gitee_api_entities.dart';
 import '../models/issue.dart' show Label;
 import '../models/repo.dart';
+import '../models/repo_traffic.dart';
 import '../models/user.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
@@ -42,6 +43,8 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
   String? _milestonesError;
   List<DeployKey> _deployKeys = [];
   String? _deployKeysError;
+  RepoTraffic? _traffic;
+  String? _trafficError;
 
   @override
   void initState() {
@@ -122,6 +125,12 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
       if (mounted) setState(() => _deployKeys = keys);
     }, (e) {
       if (mounted) setState(() => _deployKeysError = e.toString());
+    });
+    await safe(() async {
+      final traffic = await GiteeApi.getRepoTraffic(widget.owner, widget.repo);
+      if (mounted) setState(() => _traffic = traffic);
+    }, (e) {
+      if (mounted) setState(() => _trafficError = e.toString());
     });
   }
 
@@ -559,6 +568,11 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
               ),
             ),
             _section(
+              title: '访问统计（近 30 天）',
+              icon: Icons.query_stats_outlined,
+              child: _buildTrafficSection(),
+            ),
+            _section(
               title: '许可证',
               icon: Icons.gavel_outlined,
               child: _license.isEmpty
@@ -834,6 +848,47 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 访问统计区块：汇总行 + 近 14 天日访问明细。
+  /// 需要推送权限，无权限 / 未开通统计时显示内联提示。
+  Widget _buildTrafficSection() {
+    if (_trafficError != null) {
+      return const _InlineEmpty(text: '暂无权限或未开通访问统计');
+    }
+    final traffic = _traffic;
+    if (traffic == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    final recent = traffic.days.take(14).toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Wrap(
+          spacing: 10,
+          runSpacing: 6,
+          children: [
+            _MetricRow(label: '浏览 IP', value: '${traffic.ip}'),
+            _MetricRow(label: '拉取', value: '${traffic.pull}'),
+            _MetricRow(label: '推送', value: '${traffic.push}'),
+            _MetricRow(label: 'ZIP 下载', value: '${traffic.downloadZip}'),
+          ],
+        ),
+        if (recent.isNotEmpty) ...[
+          const Divider(),
+          ...recent.map((day) => _MetricRow(
+                label: '${day.date.month}/${day.date.day}',
+                value:
+                    '浏览 ${day.ip} · 拉取 ${day.pull} · 推送 ${day.push}',
+              )),
+        ],
+        if (traffic.ip == 0 && traffic.pull == 0 && traffic.push == 0)
+          const _InlineEmpty(text: '近 30 天暂无访问数据'),
+      ],
     );
   }
 

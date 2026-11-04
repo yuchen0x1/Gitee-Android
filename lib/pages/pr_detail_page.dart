@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
 import '../models/commit.dart';
 import '../models/gitee_api_entities.dart';
+import '../models/issue.dart';
 import '../models/pull_request.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
@@ -9,6 +12,7 @@ import '../widgets/app_markdown.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
+import 'issue_detail_page.dart';
 
 /// Pull Request 详情页：分支关系、状态、正文与关联提交。
 class PullRequestDetailPage extends StatefulWidget {
@@ -41,6 +45,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
   bool _hasMore = true;
   int _page = 1;
   String? _error;
+  List<Issue> _relatedIssues = [];
 
   @override
   void initState() {
@@ -94,6 +99,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
         if (commits.length < 20) _hasMore = false;
         _page++;
       });
+      unawaited(_loadRelatedIssues());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -101,6 +107,21 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
           _error = e.toString();
         });
       }
+    }
+  }
+
+  /// 关联 Issue 属于增强信息，失败时不展示，不影响主体内容。
+  Future<void> _loadRelatedIssues() async {
+    try {
+      final issues = await GiteeApi.getPullRequestIssues(
+        widget.owner,
+        widget.repo,
+        widget.number,
+      );
+      if (!mounted || issues.isEmpty) return;
+      setState(() => _relatedIssues = issues);
+    } catch (_) {
+      // 关联 Issue 接口异常时保持空列表。
     }
   }
 
@@ -389,7 +410,65 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
           itemCount: 5 + _comments.length + _files.length + _commits.length + 1,
           itemBuilder: (context, index) {
             if (index == 0) return _PullRequestHeader(pr: pr);
-            if (index == 1) return const SizedBox(height: 8);
+            if (index == 1) {
+              return Column(
+                children: [
+                  if (_relatedIssues.isNotEmpty)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('关联 Issue (${_relatedIssues.length})',
+                                style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 4),
+                            ..._relatedIssues.map(
+                              (issue) => ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  issue.state == 'open'
+                                      ? Icons.bug_report_outlined
+                                      : Icons.check_circle_outline,
+                                  size: 20,
+                                  color: issue.state == 'open'
+                                      ? AppColors.primaryRed
+                                      : AppColors.success,
+                                ),
+                                title: Text(
+                                  issue.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style:
+                                      Theme.of(context).textTheme.bodyMedium,
+                                ),
+                                subtitle: Text('Issue #${issue.number} · ${issue.state}',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                                trailing:
+                                    const Icon(Icons.chevron_right, size: 18),
+                                onTap: () {
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => IssueDetailPage(
+                                        owner: widget.owner,
+                                        repo: widget.repo,
+                                        number: issue.number,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            }
             if (index == 2) {
               return Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 10),

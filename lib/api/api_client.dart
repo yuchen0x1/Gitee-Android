@@ -157,30 +157,7 @@ class ApiClient {
         default:
           throw StateError('Unsupported HTTP method: $normalizedMethod');
       }
-      if (res.statusCode >= 200 && res.statusCode < 300) {
-        if (res.bodyBytes.isEmpty) return null;
-        return jsonDecode(utf8.decode(res.bodyBytes));
-      }
-      var detail = '';
-      try {
-        final errorBody = jsonDecode(utf8.decode(res.bodyBytes));
-        if (errorBody is Map && errorBody['message'] != null) {
-          detail = '（${errorBody['message']}）';
-        }
-      } catch (_) {}
-      var message = '请求失败（${res.statusCode}）';
-      if (res.statusCode == 401) {
-        message = '令牌无效或已过期，请重新登录';
-        setToken(null);
-        onUnauthorized?.call();
-      } else if (res.statusCode == 403) {
-        message = '没有权限访问该资源';
-      } else if (res.statusCode == 404) {
-        message = '资源不存在或已删除';
-      } else if (res.statusCode == 429) {
-        message = '请求过于频繁，请稍后重试';
-      }
-      throw GiteeApiException('$message$detail', res.statusCode);
+      return _handleResponse(res);
     } on TimeoutException {
       throw GiteeApiException('请求超时，请稍后重试');
     } on GiteeApiException {
@@ -207,5 +184,67 @@ class ApiClient {
     final data = await request('GET', path, query: query);
     _ttlCache[key] = _CacheEntry(data, DateTime.now());
     return data;
+  }
+
+  /// multipart/form-data 文件上传（如 Release 附件），复用统一的错误映射。
+  Future<dynamic> uploadMultipart(
+    String path, {
+    Map<String, String>? query,
+    required String fileField,
+    required List<int> fileBytes,
+    required String filename,
+  }) async {
+    final uri = buildUri(path, query: query);
+    try {
+      final request = http.MultipartRequest('POST', uri)
+        ..headers['Accept'] = 'application/json'
+        ..files.add(
+          http.MultipartFile.fromBytes(fileField, fileBytes,
+              filename: filename),
+        );
+      if (_token != null) {
+        request.headers['Authorization'] = 'token ${_token!}';
+      }
+      final streamed = await _client
+          .send(request)
+          .timeout(const Duration(seconds: 60));
+      final res = await http.Response.fromStream(streamed)
+          .timeout(const Duration(seconds: 60));
+      return _handleResponse(res);
+    } on TimeoutException {
+      throw GiteeApiException('请求超时，请稍后重试');
+    } on GiteeApiException {
+      rethrow;
+    } catch (_) {
+      throw GiteeApiException('网络异常，请检查网络连接');
+    }
+  }
+
+  /// 统一处理 HTTP 响应：2xx 解析 JSON，其余映射为友好的 GiteeApiException。
+  dynamic _handleResponse(http.Response res) {
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (res.bodyBytes.isEmpty) return null;
+      return jsonDecode(utf8.decode(res.bodyBytes));
+    }
+    var detail = '';
+    try {
+      final errorBody = jsonDecode(utf8.decode(res.bodyBytes));
+      if (errorBody is Map && errorBody['message'] != null) {
+        detail = '（${errorBody['message']}）';
+      }
+    } catch (_) {}
+    var message = '请求失败（${res.statusCode}）';
+    if (res.statusCode == 401) {
+      message = '令牌无效或已过期，请重新登录';
+      setToken(null);
+      onUnauthorized?.call();
+    } else if (res.statusCode == 403) {
+      message = '没有权限访问该资源';
+    } else if (res.statusCode == 404) {
+      message = '资源不存在或已删除';
+    } else if (res.statusCode == 429) {
+      message = '请求过于频繁，请稍后重试';
+    }
+    throw GiteeApiException('$message$detail', res.statusCode);
   }
 }

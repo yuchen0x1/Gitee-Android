@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
+import '../models/check_run.dart';
 import '../models/commit.dart';
 import '../models/issue_comment.dart';
 import '../theme/app_theme.dart';
+import '../utils/launch_url.dart';
 import '../widgets/app_image.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
@@ -33,6 +37,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
   final TextEditingController _commentCtrl = TextEditingController();
   bool _commentsLoading = false;
   bool _commentSubmitting = false;
+  List<CheckRun> _checkRuns = [];
 
   @override
   void initState() {
@@ -50,6 +55,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
     setState(() {
       _loading = true;
       _comments.clear();
+      _checkRuns = [];
     });
     try {
       final commit =
@@ -61,6 +67,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
         _error = null;
       });
       _loadComments();
+      unawaited(_loadCheckRuns());
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -68,6 +75,21 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
           _error = e.toString();
         });
       }
+    }
+  }
+
+  /// CI 检查项属于增强信息，失败时不展示，不影响主体内容。
+  Future<void> _loadCheckRuns() async {
+    try {
+      final runs = await GiteeApi.getCommitCheckRuns(
+        widget.owner,
+        widget.repo,
+        widget.sha,
+      );
+      if (!mounted || runs.isEmpty) return;
+      setState(() => _checkRuns = runs);
+    } catch (_) {
+      // 检查项接口异常时保持空列表（未开通 Gitee Go 等场景）。
     }
   }
 
@@ -291,6 +313,52 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
               ),
             ),
             const SizedBox(height: 8),
+            if (_checkRuns.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('CI 检查 (${_checkRuns.length})',
+                          style: Theme.of(context).textTheme.titleMedium),
+                      const SizedBox(height: 6),
+                      ..._checkRuns.map((run) {
+                        final (icon, color) = run.isRunning
+                            ? (Icons.pending_outlined, AppColors.starColor)
+                            : run.isFailure
+                                ? (Icons.error_outline, AppColors.primaryRed)
+                                : (Icons.check_circle_outline,
+                                    AppColors.success);
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(icon, color: color),
+                          title: Text(
+                            run.name.isEmpty ? '未命名检查' : run.name,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          subtitle: Text(
+                            run.isRunning
+                                ? '进行中'
+                                : run.conclusion.isEmpty
+                                    ? '等待调度'
+                                    : '结论：${run.conclusion}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          trailing: run.detailsUrl.isEmpty
+                              ? null
+                              : const Icon(Icons.open_in_new, size: 18),
+                          onTap: run.detailsUrl.isEmpty
+                              ? null
+                              : () => launchExternalUrl(run.detailsUrl),
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+            if (_checkRuns.isNotEmpty) const SizedBox(height: 8),
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(14),
