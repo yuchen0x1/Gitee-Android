@@ -13,7 +13,7 @@ void main() {
     'name': 'Gitee Client 2.1.0',
     'body': '新增在线更新',
     'html_url':
-        'https://github.com/yuchen0x1/gitee-mobile-client/releases/tag/v2.1.0',
+        'https://gitee.com/yuchen0x1/Gitee-Android/releases/tag/v2.1.0',
     'published_at': '2026-08-29T00:00:00Z',
     'assets': [
       {
@@ -75,7 +75,7 @@ void main() {
           return http.Response('', 403);
         }
         return http.Response(
-          '<a href="/yuchen0x1/gitee-mobile-client/releases/tag/v2.1.0">',
+          '<a href="/yuchen0x1/Gitee-Android/releases/tag/v2.1.0">',
           200,
         );
       }),

@@ -15,7 +15,7 @@ class UpdateService {
   UpdateService({http.Client? client}) : _client = client ?? http.Client();
 
   static const repositoryOwner = 'yuchen0x1';
-  static const repositoryName = 'gitee-mobile-client';
+  static const repositoryName = 'Gitee-Android';
   static const giteeLatestReleaseUrl =
       'https://gitee.com/api/v5/repos/$repositoryOwner/$repositoryName/releases/latest';
   static const giteeLatestReleasePageUrl =

@@ -2,7 +2,7 @@
 
 > 基于 Flutter 打造的 Gitee（码云）非官方客户端 —— 在手机上刷通知、读代码、回 Issue、审 PR。
 
-![Release](https://img.shields.io/gitee/v/yuchen0x1/gitee-mobile-client) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
+![Release](https://img.shields.io/gitee/v/yuchen0x1/Gitee-Android) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
 
 > **声明**：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力（Open API v5）为开发者提供便利。
 
@@ -67,7 +67,7 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 
 | 平台 | 形态 | 获取方式 |
 | --- | --- | --- |
-| Android | 通用 APK、分架构 APK、App Bundle | [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) |
+| Android | 通用 APK、分架构 APK、App Bundle | [Releases](https://gitee.com/yuchen0x1/Gitee-Android/releases) |
 
 ## 系统要求
 
@@ -91,8 +91,8 @@ flutter devices
 
 ```bash
 # 1. 克隆仓库
-git clone https://gitee.com/yuchen0x1/gitee-mobile-client.git
-cd gitee-mobile-client
+git clone https://gitee.com/yuchen0x1/Gitee-Android.git
+cd Gitee-Android
 
 # 2. 安装依赖
 flutter pub get
@@ -101,7 +101,7 @@ flutter pub get
 flutter run
 ```
 
-只想直接使用？前往 [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) 下载安装包，无需配置任何环境。
+只想直接使用？前往 [Releases](https://gitee.com/yuchen0x1/Gitee-Android/releases) 下载安装包，无需配置任何环境。
 
 ## 登录配置
 
@@ -138,7 +138,7 @@ flutter run
 ## 项目结构
 
 ```
-gitee-mobile-client/
+Gitee-Android/
 ├── lib/
 │   ├── ai/               # AI 摘要服务（OpenAI 兼容接口）
 │   ├── api/              # Gitee Open API v5 封装（gitee_api.dart）与 HTTP 客户端
@@ -204,7 +204,7 @@ flutter test
 - **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK。
 - **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB），并把这些产物发布为对应版本的 Release。
 
-发布产物统一在仓库的 [Releases](https://gitee.com/yuchen0x1/gitee-mobile-client/releases) 页面下载。
+发布产物统一在仓库的 [Releases](https://gitee.com/yuchen0x1/Gitee-Android/releases) 页面下载。
 
 ## 常见问题
 
@@ -232,7 +232,7 @@ flutter test
 
 ## 反馈与交流
 
-- 问题反馈：[Gitee Issues](https://gitee.com/yuchen0x1/gitee-mobile-client/issues)
+- 问题反馈：[Gitee Issues](https://gitee.com/yuchen0x1/Gitee-Android/issues)
 - QQ 交流群：1016190748
 - Telegram：<https://t.me/lenmoC>
 
