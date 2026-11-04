@@ -253,6 +253,24 @@ class GiteeApi {
     return Repo.fromJson(_asMap(data));
   }
 
+  /// 获取仓库的 Topic 标签名称列表；兼容纯字符串与官方 Topic 对象两种返回。
+  static Future<List<String>> getRepoTopics(String owner, String repo) async {
+    final data = await _requestCached(
+      '/repos/${_enc(owner)}/${_enc(repo)}/topics',
+    );
+    return _asList(data)
+        .map((e) {
+          if (e is String) return e;
+          if (e is Map) {
+            final name = e['topic_name'] ?? e['name'];
+            return name?.toString() ?? '';
+          }
+          return '';
+        })
+        .where((name) => name.isNotEmpty)
+        .toList();
+  }
+
   static Future<String?> getRepoReadme(
     String owner,
     String repo, {

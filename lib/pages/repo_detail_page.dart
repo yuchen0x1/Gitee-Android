@@ -45,6 +45,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
   late TabController _tabCtrl;
   Repo? _repo;
   String? _readme;
+  List<String> _topics = [];
   List<String> _branches = [];
   String _branch = '';
   bool _isStarred = false;
@@ -80,6 +81,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
       _readme = null;
       _readmeError = null;
       _readmeLoading = false;
+      _topics = [];
       _branches = [];
     });
     try {
@@ -121,7 +123,19 @@ class _RepoDetailPageState extends State<RepoDetailPage>
 
     if (!mounted || loadVersion != _loadVersion) return;
     unawaited(_loadReadme(branch, loadVersion: loadVersion));
+    unawaited(_loadTopics(loadVersion));
     unawaited(_loadUserRepositoryState(loadVersion));
+  }
+
+  /// Topic 标签属于增强信息，失败或为空时不展示，不影响主体内容。
+  Future<void> _loadTopics(int loadVersion) async {
+    try {
+      final topics = await GiteeApi.getRepoTopics(widget.owner, widget.repo);
+      if (!mounted || loadVersion != _loadVersion) return;
+      setState(() => _topics = topics);
+    } catch (_) {
+      // Topics 接口异常时保持空列表，页面照常渲染。
+    }
   }
 
   /// Star 与订阅状态仅影响操作按钮，不应阻断详情内容。
@@ -393,6 +407,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
             repo: repo,
             owner: widget.owner,
             repoName: widget.repo,
+            topics: _topics,
             readme: _readme,
             branch: _branch,
             readmeLoading: _readmeLoading,
@@ -529,6 +544,7 @@ class _OverviewTab extends StatelessWidget {
   final Repo repo;
   final String owner;
   final String repoName;
+  final List<String> topics;
   final String? readme;
   final String branch;
   final bool readmeLoading;
@@ -539,6 +555,7 @@ class _OverviewTab extends StatelessWidget {
     required this.repo,
     required this.owner,
     required this.repoName,
+    required this.topics,
     required this.readme,
     required this.branch,
     required this.readmeLoading,
@@ -604,6 +621,16 @@ class _OverviewTab extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(repo.description, style: theme.textTheme.bodyMedium),
+                if (topics.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final topic in topics) _TopicChip(label: topic),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -739,6 +766,28 @@ class _OverviewTab extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 仓库 Topic 标签的小胶囊，样式与页内分支/私有徽章保持一致。
+class _TopicChip extends StatelessWidget {
+  final String label;
+
+  const _TopicChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.primaryRed.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 12, color: AppColors.primaryRed),
+      ),
     );
   }
 }
