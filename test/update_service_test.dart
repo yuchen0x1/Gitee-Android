@@ -198,4 +198,46 @@ void main() {
       throwsA(isA<UpdateCheckException>()),
     );
   });
+
+  test('更新日志在 API 限流时回退 Releases Atom Feed', () async {
+    const atomFeed = '''
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="en-US">
+  <id>tag:github.com,2008:https://github.com/yuchen0x1/Gitee-Android/releases</id>
+  <updated>2026-11-04T16:35:57Z</updated>
+  <title>Release notes from Gitee-Android</title>
+  <entry>
+    <id>tag:github.com,2008:Release/251744621</id>
+    <updated>2026-11-04T16:35:57Z</updated>
+    <link rel="alternate" type="text/html" href="https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.1.0"/>
+    <title>Gitee Client v1.1.0</title>
+    <author>
+      <name>yuchen0x1</name>
+    </author>
+    <content type="html">&lt;p&gt;新增在线更新&lt;/p&gt;</content>
+  </entry>
+</feed>
+''';
+    final service = UpdateService(
+      client: MockClient((request) async {
+        if (request.url.host == 'api.github.com') {
+          return http.Response('', 403);
+        }
+        return http.Response.bytes(utf8.encode(atomFeed), 200);
+      }),
+    );
+    final releases = await service.fetchReleases();
+    expect(releases, hasLength(1));
+    expect(releases.first.tagName, 'v1.1.0');
+    expect(releases.first.name, 'Gitee Client v1.1.0');
+    expect(releases.first.body, contains('新增在线更新'));
+    expect(releases.first.htmlUrl,
+        'https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.1.0');
+    expect(releases.first.author, 'yuchen0x1');
+    expect(releases.first.id, 251744621);
+
+    // Atom 无分页：后续页直接视为没有更多。
+    final page2 = await service.fetchReleases(page: 2);
+    expect(page2, isEmpty);
+  });
 }
