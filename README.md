@@ -2,7 +2,7 @@
 
 > 基于 Flutter 打造的 Gitee（码云）非官方客户端 —— 在手机上刷通知、读代码、回 Issue、审 PR。
 
-![Release](https://img.shields.io/gitee/v/yuchen0x1/Gitee-Android) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
+![Release](https://img.shields.io/github/v/yuchen0x1/Gitee-Android) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
 
 > **声明**：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力（Open API v5）为开发者提供便利。
 
@@ -67,7 +67,7 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 
 | 平台 | 形态 | 获取方式 |
 | --- | --- | --- |
-| Android | 通用 APK、分架构 APK、App Bundle | [Releases](https://gitee.com/yuchen0x1/Gitee-Android/releases) |
+| Android | 通用 APK、分架构 APK、App Bundle | [Releases](https://github.com/yuchen0x1/Gitee-Android/releases) |
 
 ## 系统要求
 
@@ -91,7 +91,7 @@ flutter devices
 
 ```bash
 # 1. 克隆仓库
-git clone https://gitee.com/yuchen0x1/Gitee-Android.git
+git clone https://github.com/yuchen0x1/Gitee-Android.git
 cd Gitee-Android
 
 # 2. 安装依赖
@@ -101,7 +101,7 @@ flutter pub get
 flutter run
 ```
 
-只想直接使用？前往 [Releases](https://gitee.com/yuchen0x1/Gitee-Android/releases) 下载安装包，无需配置任何环境。
+只想直接使用？前往 [Releases](https://github.com/yuchen0x1/Gitee-Android/releases) 下载安装包，无需配置任何环境。
 
 ## 登录配置
 
@@ -133,7 +133,7 @@ flutter run
 
 **AI 摘要（可选）**：在「我的 → AI 设置」中填入 OpenAI 兼容接口的 API Key 即可启用，用于把 Issue / PR 浓缩为中文摘要。默认对接 DeepSeek（`https://api.deepseek.com`，模型 `deepseek-chat`），Base URL 和 Model 均可在设置页修改为其他 OpenAI 兼容服务。不配置则该功能不生效，不影响其他功能。
 
-**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查访问 Gitee 公开 Release，API 被限流时自动回退 Gitee 网页版发布页；检查不需要登录，不会发送 Gitee 令牌；结果在应用进程内缓存 10 分钟。发现新版本时，Android 直接下载通用 APK。
+**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查访问 GitHub 公开 Release，REST API 被限流时自动回退 GitHub 网页版发布页；检查不需要登录，不会发送任何令牌；结果在应用进程内缓存 10 分钟。发现新版本时，Android 直接下载通用 APK。
 
 ## 项目结构
 
@@ -180,10 +180,9 @@ flutter build appbundle --release
 
 1. 提升 `pubspec.yaml` 的 `version` 并提交；
 2. 打标签并推送：`git tag v<版本> && git push origin main v<版本>`；
-3. 构建安装包：`flutter build apk --release`；
-4. 在 Gitee「发行版」页面创建发行版（选择标签）并上传 APK；
+3. GitHub Actions 的 Release 工作流会自动校验版本、构建安装包并发布 Release；
 
-> 注意：Gitee 的发行版与标签绑定，**已发布发行版的标签不要删除或强推**，否则发行版会一并消失。
+> 注意：GitHub 的 Release 与标签绑定，**已发布 Release 的标签不要删除或强推**，否则 Release 会一并消失。
 
 ## 运行测试
 
@@ -204,7 +203,7 @@ flutter test
 - **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK。
 - **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB），并把这些产物发布为对应版本的 Release。
 
-发布产物统一在仓库的 [Releases](https://gitee.com/yuchen0x1/Gitee-Android/releases) 页面下载。
+发布产物统一在仓库的 [Releases](https://github.com/yuchen0x1/Gitee-Android/releases) 页面下载。
 
 ## 常见问题
 
@@ -218,7 +217,7 @@ flutter test
 写入类操作（创建 Issue / PR、编辑文件、管理 Webhook 等）要求令牌具备对应权限，请到 Gitee 重新生成令牌并勾选所需 scope。
 
 **更新检查提示失败？**
-更新检查只访问 Gitee 公开 Release（Open API 被限流时自动回退 Gitee 网页版发布页），不会访问 GitHub。两者都失败通常是当前网络无法连接 Gitee，可稍后在「我的 → 设置 → 检查更新」重试；检查结果缓存 10 分钟，手动检查会强制刷新。
+更新检查只访问 GitHub 公开 Release（REST API 被限流时自动回退 GitHub 网页版发布页）。失败通常是当前网络无法连接 GitHub，可稍后在「我的 → 设置 → 检查更新」重试；检查结果缓存 10 分钟，手动检查会强制刷新。
 
 **搜索结果来自哪里？**
 仓库搜索使用 Gitee 网页搜索（so.gitee.com）同款数据源——Gitee Open API v5 的搜索接口存在服务端已知问题（即使令牌有效也可能返回空结果），因此仓库搜索不依赖该接口；用户与 Issue 搜索仍走 Open API v5。搜索为空时也可点击「在 Gitee 网页搜索」跳转网页版验证。
@@ -232,7 +231,7 @@ flutter test
 
 ## 反馈与交流
 
-- 问题反馈：[Gitee Issues](https://gitee.com/yuchen0x1/Gitee-Android/issues)
+- 问题反馈：[GitHub Issues](https://github.com/yuchen0x1/Gitee-Android/issues)
 - QQ 交流群：1016190748
 - Telegram：<https://t.me/lenmoC>
 

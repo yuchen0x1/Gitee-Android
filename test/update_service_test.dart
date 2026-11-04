@@ -68,10 +68,10 @@ void main() {
     expect(await service.checkForUpdate(currentVersion: '3.0.0'), isNull);
   });
 
-  test('Gitee API 受限时从 Releases 网页兜底识别更新', () async {
+  test('GitHub API 受限时从 Releases 网页兜底识别更新', () async {
     final service = UpdateService(
       client: MockClient((request) async {
-        if (request.url.path.contains('/api/')) {
+        if (request.url.host == 'api.github.com') {
           return http.Response('', 403);
         }
         return http.Response(
@@ -82,10 +82,10 @@ void main() {
     );
     final update = await service.checkForUpdate(currentVersion: '2.0.0');
     expect(update?.version, 'v2.1.0');
-    expect(update?.htmlUrl, UpdateService.giteeLatestReleasePageUrl);
+    expect(update?.htmlUrl, UpdateService.githubLatestReleasePageUrl);
   });
 
-  test('Gitee 通道不发送用户 Token', () async {
+  test('GitHub 通道不发送用户 Token', () async {
     late http.Request captured;
     final service = UpdateService(
       client: MockClient((request) async {
@@ -98,7 +98,7 @@ void main() {
       }),
     );
     await service.checkForUpdate(currentVersion: '2.0.0');
-    expect(captured.url.host, 'gitee.com');
+    expect(captured.url.host, 'api.github.com');
     expect(captured.headers.containsKey('authorization'), isFalse);
   });
 
@@ -164,13 +164,13 @@ void main() {
     expect(update?.version, 'v2.1.0');
   });
 
-  test('Gitee API 成功时不再访问网页兜底', () async {
+  test('GitHub API 成功时不再访问网页兜底', () async {
     final stale = Map<String, dynamic>.from(releaseJson)
       ..['tag_name'] = 'v2.0.0';
     var pageCalls = 0;
     final service = UpdateService(
       client: MockClient((request) async {
-        if (request.url.path.contains('/api/')) {
+        if (request.url.host == 'api.github.com') {
           return http.Response(jsonEncode(stale), 200,
               headers: {'content-type': 'application/json; charset=utf-8'});
         }
@@ -178,16 +178,16 @@ void main() {
         return http.Response('', 200);
       }),
     );
-    // Gitee API 返回与当前版本一致的 v2.0.0：视为已最新，不触发网页兜底。
+    // GitHub API 返回与当前版本一致的 v2.0.0：视为已最新，不触发网页兜底。
     final update = await service.checkForUpdate(currentVersion: '2.0.0');
     expect(update, isNull);
     expect(pageCalls, 0);
   });
 
-  test('Gitee API 与网页兜底均失败时抛出异常', () async {
+  test('GitHub API 与网页兜底均失败时抛出异常', () async {
     final service = UpdateService(
       client: MockClient((request) async {
-        if (request.url.path.contains('/api/')) {
+        if (request.url.host == 'api.github.com') {
           return http.Response('', 403);
         }
         return http.Response('', 500);

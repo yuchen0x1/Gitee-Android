@@ -4,11 +4,12 @@ import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../models/app_update.dart';
+import '../models/release.dart';
 
 /// 公开 Release 在线更新服务。
 ///
-/// 更新检查不需要登录，也不会发送 Gitee Token。Gitee 是唯一发行通道：
-/// 先查 Open API，被限流或不可达时回退 Gitee 网页版发布页。
+/// 更新检查不需要登录，也不会发送任何 Token。GitHub 是唯一发行通道：
+/// 先查 REST API，不可达时回退 GitHub 网页版发布页。
 class UpdateService {
   static final shared = UpdateService();
 
@@ -16,14 +17,16 @@ class UpdateService {
 
   static const repositoryOwner = 'yuchen0x1';
   static const repositoryName = 'Gitee-Android';
-  static const giteeLatestReleaseUrl =
-      'https://gitee.com/api/v5/repos/$repositoryOwner/$repositoryName/releases/latest';
-  static const giteeLatestReleasePageUrl =
-      'https://gitee.com/$repositoryOwner/$repositoryName/releases/latest';
-  static const giteeReleasePageBaseUrl =
-      'https://gitee.com/$repositoryOwner/$repositoryName/releases';
+  static const githubLatestReleaseUrl =
+      'https://api.github.com/repos/$repositoryOwner/$repositoryName/releases/latest';
+  static const githubReleasesApiUrl =
+      'https://api.github.com/repos/$repositoryOwner/$repositoryName/releases';
+  static const githubLatestReleasePageUrl =
+      'https://github.com/$repositoryOwner/$repositoryName/releases/latest';
+  static const githubReleasePageBaseUrl =
+      'https://github.com/$repositoryOwner/$repositoryName/releases';
 
-  static const _allowedHosts = {'gitee.com'};
+  static const _allowedHosts = {'github.com', 'api.github.com'};
   static const _requestUserAgent = 'Gitee-Client-Update-Checker';
 
   final http.Client _client;
@@ -64,20 +67,20 @@ class UpdateService {
 
   Future<AppUpdate?> _checkForUpdate(String version) async {
     try {
-      final release = await _fetchGiteeRelease();
-      // Gitee 是唯一发行通道：成功返回即以它为准。
+      final release = await _fetchGitHubRelease();
+      // GitHub 是唯一发行通道：成功返回即以它为准。
       return _newerReleaseOrNull(release, version);
     } catch (_) {
-      // API 受限、限流或不可达时回退 Gitee 网页版发布页。
+      // API 受限、限流或不可达时回退 GitHub 网页版发布页。
     }
-    return _checkGiteeReleasePage(version);
+    return _checkGitHubReleasePage(version);
   }
 
-  Future<AppUpdate> _fetchGiteeRelease() async {
+  Future<AppUpdate> _fetchGitHubRelease() async {
     final response = await _client.get(
-      _validatedUri(giteeLatestReleaseUrl),
+      _validatedUri(githubLatestReleaseUrl),
       headers: const {
-        'Accept': 'application/json',
+        'Accept': 'application/vnd.github+json',
         'User-Agent': _requestUserAgent,
       },
     ).timeout(const Duration(seconds: 6));
@@ -88,17 +91,16 @@ class UpdateService {
     if (decoded is! Map) {
       throw const UpdateCheckException('更新服务返回了无效数据');
     }
-    return AppUpdate.fromGiteeJson(
+    return AppUpdate.fromGitHubJson(
       Map<String, dynamic>.from(decoded),
-      htmlUrlFallback: giteeReleasePageBaseUrl,
     );
   }
 
   /// 网页版兜底：/releases/latest 会 302 到 /releases/tag/{tag}，
-  /// 且不占用 Open API 的匿名限流配额。
-  Future<AppUpdate?> _checkGiteeReleasePage(String currentVersion) async {
+  /// 且不占用 REST API 的匿名限流配额。
+  Future<AppUpdate?> _checkGitHubReleasePage(String currentVersion) async {
     final response = await _client.get(
-      _validatedUri(giteeLatestReleasePageUrl),
+      _validatedUri(githubLatestReleasePageUrl),
       headers: const {'User-Agent': _requestUserAgent},
     ).timeout(const Duration(seconds: 8));
     if (response.statusCode < 200 || response.statusCode >= 400) {
@@ -117,12 +119,40 @@ class UpdateService {
         version: version,
         name: version,
         notes: '',
-        htmlUrl: finalUrl.isEmpty ? giteeLatestReleasePageUrl : finalUrl,
+        htmlUrl: finalUrl.isEmpty ? githubLatestReleasePageUrl : finalUrl,
         publishedAt: '',
         assets: const [],
       ),
       currentVersion,
     );
+  }
+
+  /// 更新日志：分页列出仓库全部版本发布（REST API，匿名访问）。
+  Future<List<Release>> fetchReleases({
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final uri = _validatedUri(
+      '$githubReleasesApiUrl?per_page=$perPage&page=$page',
+    );
+    final response = await _client.get(
+      uri,
+      headers: const {
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': _requestUserAgent,
+      },
+    ).timeout(const Duration(seconds: 8));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw UpdateCheckException('更新日志暂时不可用（${response.statusCode}）');
+    }
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! List) {
+      throw const UpdateCheckException('更新日志返回了无效数据');
+    }
+    return decoded
+        .whereType<Map>()
+        .map((e) => Release.fromJson(Map<String, dynamic>.from(e)))
+        .toList(growable: false);
   }
 
   AppUpdate? _newerReleaseOrNull(AppUpdate release, String currentVersion) {

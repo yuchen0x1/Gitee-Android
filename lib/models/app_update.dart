@@ -62,24 +62,6 @@ class AppUpdate {
     );
   }
 
-  /// Gitee v5 Release 的结构与 GitHub 基本兼容，差异仅在于：
-  /// 没有发布时间字段（用 created_at 兜底），且可能缺少 html_url
-  /// （用 [htmlUrlFallback] 拼接 /releases/tag/{tag_name} 兜底）。
-  factory AppUpdate.fromGiteeJson(
-    Map<String, dynamic> json, {
-    String? htmlUrlFallback,
-  }) {
-    final tagName = json['tag_name']?.toString() ?? '';
-    final fallbackUrl = htmlUrlFallback == null || tagName.isEmpty
-        ? htmlUrlFallback
-        : '$htmlUrlFallback/tag/${Uri.encodeComponent(tagName)}';
-    return AppUpdate.fromGitHubJson(<String, dynamic>{
-      ...json,
-      'published_at': json['published_at'] ?? json['created_at'],
-      'html_url': json['html_url']?.toString() ?? fallbackUrl ?? '',
-    });
-  }
-
   /// 返回当前平台最合适的发布附件；没有对应安装包时返回 null。
   AppUpdateAsset? assetForPlatform(TargetPlatform platform) {
     if (platform == TargetPlatform.android) {
