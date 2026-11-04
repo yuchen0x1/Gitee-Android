@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/gitee_api_entities.dart';
 import '../models/issue.dart' show Label;
@@ -86,7 +87,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }

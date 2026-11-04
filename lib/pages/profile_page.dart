@@ -111,7 +111,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 12),
                         _buildQuickGrid(user),
                         const SizedBox(height: 20),
-                        Text('设置', style: theme.textTheme.titleMedium),
+                        Text('偏好', style: theme.textTheme.titleMedium),
                         const SizedBox(height: 12),
                         GlassSurface(
                           child: Material(
@@ -135,7 +135,18 @@ class _ProfilePageState extends State<ProfilePage> {
                                   value: AppLock.enabled,
                                   onChanged: _toggleAppLock,
                                 ),
-                                const Divider(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('内容与账号', style: theme.textTheme.titleMedium),
+                        const SizedBox(height: 12),
+                        GlassSurface(
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: Column(
+                              children: [
                                 ListTile(
                                   leading: const Icon(Icons.help_outline,
                                       color: AppColors.primaryRed),
@@ -170,15 +181,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 ),
                                 const Divider(),
                                 ListTile(
-                                  leading: const Icon(Icons.help_outline,
-                                      color: AppColors.primaryRed),
-                                  title: const Text('使用指南'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
-                                  onTap: _openDemo,
-                                ),
-                                const Divider(),
-                                ListTile(
                                   leading: const Icon(Icons.smart_toy_outlined,
                                       color: AppColors.primaryRed),
                                   title: const Text('AI 设置'),
@@ -188,6 +190,26 @@ class _ProfilePageState extends State<ProfilePage> {
                                     MaterialPageRoute(
                                         builder: (_) => const AiSettingsPage()),
                                   ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text('应用', style: theme.textTheme.titleMedium),
+                        const SizedBox(height: 12),
+                        GlassSurface(
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: Column(
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.help_outline,
+                                      color: AppColors.primaryRed),
+                                  title: const Text('使用指南'),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      color: AppColors.textTertiary),
+                                  onTap: _openDemo,
                                 ),
                                 const Divider(),
                                 ListTile(

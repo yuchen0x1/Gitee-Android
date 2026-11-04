@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/file.dart';
 import '../theme/app_theme.dart';
@@ -89,7 +90,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
       if (mounted && generation == _filesGeneration) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -184,7 +185,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
   }
 
   Widget _buildBody() {
-    if (_files.isEmpty && _loading) return const SkeletonList();
+    if (_files.isEmpty && _loading) return const SkeletonList(variant: SkeletonVariant.issueRow);
     if (_files.isEmpty && _error != null) {
       return ErrorState(message: _error!, onRetry: _loadFiles);
     }
@@ -212,7 +213,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
               leading: Icon(
                 file.type == 'dir' ? Icons.folder : Icons.insert_drive_file,
                 color: file.type == 'dir'
-                    ? const Color(0xFFFFB800)
+                    ? AppColors.folderIcon
                     : AppColors.textSecondary,
                 size: 28,
               ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
 import '../api/so_search_api.dart';
@@ -13,6 +15,7 @@ import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
 import '../widgets/user_tile.dart';
 import '../utils/launch_url.dart';
+import '../utils/error_message.dart';
 import 'issue_detail_page.dart';
 
 enum _SearchType { repo, user, issue }
@@ -53,6 +56,7 @@ class _SearchPageState extends State<SearchPage> {
   String _issueLabel = '';
   String _userSort = '';
   String? _error;
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -60,7 +64,21 @@ class _SearchPageState extends State<SearchPage> {
     _scroll.addListener(_onScroll);
   }
 
-  Future<void> _search({bool loadMore = false}) async {
+  /// 输入防抖：停顿 400ms 后自动搜索；回车/点标签仍即时触发。
+  void _onQueryChanged(String value) {
+    setState(() {});
+    _debounce?.cancel();
+    final q = value.trim();
+    if (q.isEmpty || q == _lastQuery) return;
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _search(recordHistory: false);
+    });
+  }
+
+  Future<void> _search({
+    bool loadMore = false,
+    bool recordHistory = true,
+  }) async {
     final q = _ctrl.text.trim();
     if (q.isEmpty) return;
     final generation = ++_searchGeneration;
@@ -73,7 +91,9 @@ class _SearchPageState extends State<SearchPage> {
       _lastQuery = q;
       _searched = true;
       _error = null;
-      AppSettingsScope.of(context).addSearchHistory(q);
+      if (recordHistory && mounted) {
+        AppSettingsScope.of(context).addSearchHistory(q);
+      }
     } else if (_loading) {
       return;
     }
@@ -125,7 +145,7 @@ class _SearchPageState extends State<SearchPage> {
       if (mounted && generation == _searchGeneration) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -275,7 +295,7 @@ class _SearchPageState extends State<SearchPage> {
                 backgroundColor:
                     const WidgetStatePropertyAll(Colors.transparent),
                 elevation: const WidgetStatePropertyAll(0),
-                onChanged: (_) => setState(() {}),
+                onChanged: _onQueryChanged,
                 trailing: [
                   if (_ctrl.text.isNotEmpty)
                     IconButton(
@@ -359,7 +379,7 @@ class _SearchPageState extends State<SearchPage> {
         : _type == _SearchType.user
             ? _userResults.length
             : _issueResults.length;
-    if (items == 0 && _loading) return const SkeletonList();
+    if (items == 0 && _loading) return const SkeletonList(variant: SkeletonVariant.repoCard);
     if (items == 0 && _error != null) {
       return ErrorState(message: _error!, onRetry: () => _search());
     }
@@ -444,6 +464,7 @@ class _SearchPageState extends State<SearchPage> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _ctrl.dispose();
     _scroll.dispose();
     super.dispose();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../theme/app_theme.dart';
 import 'skeleton_list.dart';
 import 'state_views.dart';
@@ -80,7 +81,7 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
         setState(() {
           _loading = false;
           _requestInFlight = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }

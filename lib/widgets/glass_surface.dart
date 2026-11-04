@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 /// A restrained glass surface for high-value UI layers.
+/// [simple] 模式跳过 BackdropFilter，用半透明纯色 + 描边模拟质感，
+/// 适合长列表逐项使用，避免每项一次模糊采样带来的性能开销。
 class GlassSurface extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -10,6 +12,7 @@ class GlassSurface extends StatelessWidget {
   final double blur;
   final bool bordered;
   final Color? tint;
+  final bool simple;
 
   const GlassSurface({
     super.key,
@@ -19,6 +22,7 @@ class GlassSurface extends StatelessWidget {
     this.blur = 18,
     this.bordered = true,
     this.tint,
+    this.simple = false,
   });
 
   @override
@@ -27,29 +31,38 @@ class GlassSurface extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final surface = tint ??
         (isDark
-            ? Colors.white.withValues(alpha: 0.075)
-            : Colors.white.withValues(alpha: 0.68));
+            ? Colors.white.withValues(alpha: simple ? 0.085 : 0.075)
+            : Colors.white.withValues(alpha: simple ? 0.82 : 0.68));
     final border = isDark
         ? Colors.white.withValues(alpha: 0.13)
         : Colors.white.withValues(alpha: 0.72);
+
+    final decoration = BoxDecoration(
+      color: surface,
+      borderRadius: borderRadius,
+      border: bordered ? Border.all(color: border) : null,
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.07),
+          blurRadius: simple ? 8 : 22,
+          offset: Offset(0, simple ? 3 : 10),
+        ),
+      ],
+    );
+
+    if (simple) {
+      return DecoratedBox(
+        decoration: decoration,
+        child: Padding(padding: padding, child: child),
+      );
+    }
 
     return ClipRRect(
       borderRadius: borderRadius,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
         child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: surface,
-            borderRadius: borderRadius,
-            border: bordered ? Border.all(color: border) : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.07),
-                blurRadius: 22,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
+          decoration: decoration,
           child: Padding(padding: padding, child: child),
         ),
       ),

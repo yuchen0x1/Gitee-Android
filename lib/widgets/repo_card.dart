@@ -28,6 +28,7 @@ class RepoCard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: GlassSurface(
+          simple: true,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -35,7 +36,11 @@ class RepoCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    AppAvatar(url: repo.ownerAvatar, size: 40, radius: 8),
+                    Hero(
+                      tag: 'repo-avatar-${repo.fullName}',
+                      child: AppAvatar(
+                          url: repo.ownerAvatar, size: 40, radius: 8),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(

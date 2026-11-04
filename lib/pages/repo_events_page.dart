@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/event.dart';
 import '../theme/app_theme.dart';
@@ -72,7 +73,7 @@ class _RepoEventsPageState extends State<RepoEventsPage> {
         setState(() {
           _loading = false;
           _requestInFlight = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -86,7 +87,7 @@ class _RepoEventsPageState extends State<RepoEventsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty && _loading) return const Scaffold(body: SkeletonList());
+    if (_items.isEmpty && _loading) return const Scaffold(body: SkeletonList(variant: SkeletonVariant.commitRow));
     if (_items.isEmpty && _error != null) {
       return Scaffold(
         appBar: AppBar(title: const Text('仓库动态')),

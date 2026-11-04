@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'package:highlight/highlight.dart';
 import '../api/gitee_api.dart';
 import '../api/api_client.dart';
 import '../theme/app_theme.dart';
+import '../theme/code_theme.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
 
@@ -121,19 +123,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
       return TextSpan(
           text: content.isEmpty ? '// 无法加载文件内容' : content, style: base);
     }
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final colors = <String, Color>{
-      'keyword': dark ? const Color(0xFFC678DD) : const Color(0xFFB07219),
-      'built_in': dark ? const Color(0xFF61AFEF) : const Color(0xFF3572A5),
-      'type': dark ? const Color(0xFF61AFEF) : const Color(0xFF2B7489),
-      'literal': dark ? const Color(0xFFD19A66) : const Color(0xFF0086B3),
-      'number': dark ? const Color(0xFFD19A66) : const Color(0xFF0086B3),
-      'string': dark ? const Color(0xFF98C379) : const Color(0xFF183691),
-      'comment': dark ? const Color(0xFF7F848E) : const Color(0xFF9CA3AF),
-      'title': dark ? const Color(0xFF61AFEF) : const Color(0xFF6F42C1),
-      'attr': dark ? const Color(0xFFE5C07B) : const Color(0xFF0086B3),
-      'meta': dark ? const Color(0xFFE5C07B) : const Color(0xFF6B7280),
-    };
+    final colors = CodeTheme.colorsOf(Theme.of(context).brightness);
     final result = highlight.parse(content, language: _language);
     return TextSpan(
       style: base,
@@ -176,7 +166,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -361,12 +351,11 @@ class _CodeViewPageState extends State<CodeViewPage> {
       return ErrorState(message: _error!, onRetry: _loadContent);
     }
     final theme = Theme.of(context);
-    final dark = theme.brightness == Brightness.dark;
     final textStyle = TextStyle(
       fontFamily: 'monospace',
       fontSize: 13,
       height: 1.6,
-      color: dark ? const Color(0xFFE4E4EF) : AppColors.textPrimary,
+      color: CodeTheme.textOf(theme.brightness),
     );
     final code = SelectableText.rich(_highlightCode(textStyle));
     return SingleChildScrollView(
@@ -375,7 +364,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: dark ? const Color(0xFF1E1E2E) : const Color(0xFFF5F6FA),
+          color: CodeTheme.backgroundOf(theme.brightness),
           borderRadius: BorderRadius.circular(12),
         ),
         child: _wrapEnabled

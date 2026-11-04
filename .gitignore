@@ -62,3 +62,6 @@ app.*.map.json
 /gitee_*_run_*/
 /flutter_01.log
 /.mimosa/
+
+# ZCode 工具产物
+.zcode/

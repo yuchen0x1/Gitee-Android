@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../ai/ai_summary.dart';
 import '../api/gitee_api.dart';
 import '../models/issue.dart';
@@ -88,7 +89,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/gitee_api_entities.dart';
 import '../theme/app_theme.dart';
@@ -47,7 +48,7 @@ class _GistDetailPageState extends State<GistDetailPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }

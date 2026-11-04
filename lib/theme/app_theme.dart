@@ -20,6 +20,10 @@ class AppColors {
   static const Color success = Color(0xFF10B981);
   static const Color closed = Color(0xFF6B7280);
 
+  /// 语义色：文件夹图标、已合并的 PR。
+  static const Color folderIcon = Color(0xFFFFB800);
+  static const Color merged = Color(0xFF8B5CF6);
+
   /// 编程语言对应色值，未知语言统一使用灰色。
   static Color languageColor(String? language) {
     const map = <String, Color>{

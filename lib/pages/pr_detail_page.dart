@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/commit.dart';
 import '../models/gitee_api_entities.dart';
@@ -104,7 +105,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -654,7 +655,7 @@ class _PullRequestHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final (label, color) = switch (pr.state) {
-      'merged' => ('已合并', const Color(0xFF8B5CF6)),
+      'merged' => ('已合并', AppColors.merged),
       'open' => ('开放', AppColors.success),
       _ => ('已关闭', AppColors.closed),
     };

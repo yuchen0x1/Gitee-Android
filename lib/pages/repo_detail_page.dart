@@ -6,6 +6,7 @@ import '../models/file.dart';
 import '../models/repo.dart';
 import '../theme/app_theme.dart';
 import '../utils/launch_url.dart';
+import '../utils/error_message.dart';
 import '../widgets/app_image.dart';
 import '../widgets/app_markdown.dart';
 import '../widgets/glass_surface.dart';
@@ -98,7 +99,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
       if (mounted && loadVersion == _loadVersion) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -298,7 +299,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
     if (_repo == null && _loading) {
       return Scaffold(
         appBar: AppBar(title: Text(widget.repo)),
-        body: const SkeletonList(),
+        body: const SkeletonList(variant: SkeletonVariant.issueRow),
       );
     }
     if (_repo == null && _error != null) {
@@ -583,7 +584,10 @@ class _OverviewTab extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    AppAvatar(url: repo.ownerAvatar, size: 48, radius: 10),
+                    Hero(
+                      tag: 'repo-avatar-${repo.fullName}',
+                      child: AppAvatar(url: repo.ownerAvatar, size: 48, radius: 10),
+                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
@@ -920,7 +924,7 @@ class _FilesTabState extends State<_FilesTab> {
       if (mounted && generation == _generation) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -1000,7 +1004,7 @@ class _FilesTabState extends State<_FilesTab> {
               leading: Icon(
                 file.type == 'dir' ? Icons.folder : Icons.insert_drive_file,
                 color: file.type == 'dir'
-                    ? const Color(0xFFFFB800)
+                    ? AppColors.folderIcon
                     : AppColors.textSecondary,
                 size: 28,
               ),

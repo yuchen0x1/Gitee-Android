@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/repo.dart';
 import '../models/user.dart';
@@ -50,7 +51,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -123,7 +124,7 @@ class _UserProfilePageState extends State<UserProfilePage> {
       body: Column(
         children: [
           if (_user == null && _loading)
-            const Expanded(child: SkeletonList())
+            const Expanded(child: SkeletonList(variant: SkeletonVariant.repoCard))
           else if (_user == null && _error != null)
             Expanded(
               child: ErrorState(message: _error!, onRetry: _loadUser),

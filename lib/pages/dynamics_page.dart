@@ -3,7 +3,9 @@ import '../api/gitee_api.dart';
 import '../models/event.dart';
 import '../models/notification.dart';
 import '../theme/app_theme.dart';
+import '../utils/error_message.dart';
 import '../utils/launch_url.dart';
+import '../widgets/anim.dart';
 import '../widgets/app_image.dart';
 import '../widgets/glass_surface.dart';
 import '../widgets/skeleton_list.dart';
@@ -110,7 +112,7 @@ class _NotificationsViewState extends State<NotificationsView> {
         setState(() {
           _loading = false;
           _requestInFlight = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -129,7 +131,7 @@ class _NotificationsViewState extends State<NotificationsView> {
 
   @override
   Widget build(BuildContext context) {
-    if (_items.isEmpty && _loading) return const SkeletonList();
+    if (_items.isEmpty && _loading) return const SkeletonList(variant: SkeletonVariant.commitRow);
     if (_items.isEmpty && _error != null) {
       return ErrorState(message: _error!, onRetry: () => _load(refresh: true));
     }
@@ -280,7 +282,7 @@ class _EventsViewState extends State<EventsView> {
         setState(() {
           _loading = false;
           _requestInFlight = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -297,37 +299,56 @@ class _EventsViewState extends State<EventsView> {
     final login = widget.userLogin;
     if (login == null || login.isEmpty) {
       return const EmptyState(
+        key: ValueKey('events-empty-user'),
         icon: Icons.person_search,
         title: '正在获取用户信息',
         subtitle: '加载登录用户后将展示最近动态',
       );
     }
-    if (_items.isEmpty && _loading) return const SkeletonList();
-    if (_items.isEmpty && _error != null) {
-      return ErrorState(message: _error!, onRetry: () => _load(refresh: true));
-    }
-    if (_items.isEmpty) {
-      return const EmptyState(
+    Widget body;
+    if (_items.isEmpty && _loading) {
+      body = const SkeletonList(
+        key: ValueKey('events-loading'),
+        variant: SkeletonVariant.commitRow,
+      );
+    } else if (_items.isEmpty && _error != null) {
+      body = ErrorState(
+        key: const ValueKey('events-error'),
+        message: _error!,
+        onRetry: () => _load(refresh: true),
+      );
+    } else if (_items.isEmpty) {
+      body = const EmptyState(
+        key: ValueKey('events-empty'),
         icon: Icons.dynamic_feed,
         title: '暂无动态',
         subtitle: '关注用户产生新动作后会出现在这里',
       );
+    } else {
+      body = RefreshIndicator(
+        color: AppColors.primaryRed,
+        onRefresh: () => _load(refresh: true),
+        child: ListView.builder(
+          key: const ValueKey('events-list'),
+          controller: _scroll,
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          itemCount: _items.length + 1,
+          itemBuilder: (context, index) {
+            if (index >= _items.length) {
+              return ListFooter(loading: _loading, hasMore: _hasMore);
+            }
+            return FadeSlideIn(
+              index: index,
+              child: _EventCard(event: _items[index]),
+            );
+          },
+        ),
+      );
     }
-    return RefreshIndicator(
-      color: AppColors.primaryRed,
-      onRefresh: () => _load(refresh: true),
-      child: ListView.builder(
-        controller: _scroll,
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: _items.length + 1,
-        itemBuilder: (context, index) {
-          if (index >= _items.length) {
-            return ListFooter(loading: _loading, hasMore: _hasMore);
-          }
-          return _EventCard(event: _items[index]);
-        },
-      ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 240),
+      child: body,
     );
   }
 

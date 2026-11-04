@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/namespace.dart';
 import '../theme/app_theme.dart';
@@ -228,7 +229,7 @@ class _CreateRepoPageState extends State<CreateRepoPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/gitee_api_entities.dart';
 import '../models/repo.dart';
@@ -44,7 +45,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -65,7 +66,7 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
   }
 
   Widget _buildBody() {
-    if (_loading && _items.isEmpty) return const SkeletonList();
+    if (_loading && _items.isEmpty) return const SkeletonList(variant: SkeletonVariant.userTile);
     if (_error != null && _items.isEmpty) {
       return ErrorState(message: _error!, onRetry: _load);
     }

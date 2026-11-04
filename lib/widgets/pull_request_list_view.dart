@@ -113,7 +113,7 @@ class _StateChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (state) {
-      'merged' => ('已合并', const Color(0xFF8B5CF6)),
+      'merged' => ('已合并', AppColors.merged),
       'open' => ('开放', AppColors.success),
       _ => ('已关闭', AppColors.closed),
     };

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../theme/app_theme.dart';
 
@@ -66,7 +67,7 @@ class _IssueComposerState extends State<_IssueComposer> {
       if (mounted) {
         setState(() {
           _submitting = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }

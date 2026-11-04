@@ -6,7 +6,9 @@ import '../models/check_run.dart';
 import '../models/commit.dart';
 import '../models/issue_comment.dart';
 import '../theme/app_theme.dart';
+import '../theme/code_theme.dart';
 import '../utils/launch_url.dart';
+import '../utils/error_message.dart';
 import '../widgets/app_image.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
@@ -72,7 +74,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = e.toString();
+          _error = friendlyError(e);
         });
       }
     }
@@ -211,9 +213,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: theme.brightness == Brightness.dark
-                            ? const Color(0xFF1E1E2E)
-                            : const Color(0xFFF5F6FA),
+                        color: CodeTheme.backgroundOf(theme.brightness),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: SelectableText(
@@ -222,9 +222,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                           fontFamily: 'monospace',
                           fontSize: 13,
                           height: 1.5,
-                          color: theme.brightness == Brightness.dark
-                              ? const Color(0xFFE4E4EF)
-                              : AppColors.textPrimary,
+                          color: CodeTheme.textOf(theme.brightness),
                         ),
                       ),
                     ),
