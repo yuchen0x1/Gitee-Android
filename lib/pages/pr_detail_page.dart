@@ -13,6 +13,7 @@ import '../widgets/app_markdown.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
+import '../widgets/diff_viewer.dart';
 import 'issue_detail_page.dart';
 
 /// Pull Request 详情页：分支关系、状态、正文与关联提交。
@@ -295,18 +296,18 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       builder: (context) => DraggableScrollableSheet(
         expand: false,
-        builder: (context, controller) => ListView(
-          controller: controller,
-          padding: const EdgeInsets.all(16),
-          children: [
-            Text(file.filename, style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 10),
-            Text('${file.status}  +${file.additions}  -${file.deletions}'),
-            const SizedBox(height: 12),
-            SelectableText(file.patch.isEmpty ? '暂无 diff 数据' : file.patch),
-          ],
+        initialChildSize: 0.8,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (context, controller) => DiffViewer(
+          patch: file.patch,
+          filename: file.filename,
+          status: file.status,
+          additions: file.additions,
+          deletions: file.deletions,
         ),
       ),
     );

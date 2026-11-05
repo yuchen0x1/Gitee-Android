@@ -48,6 +48,8 @@ class _CodeViewPageState extends State<CodeViewPage> {
   String? _error;
   late bool _isImage;
   bool _wrapEnabled = false;
+  bool _showLineNumbers = true;
+  double _fontSize = 13.0;
   String _sha = '';
 
   String get _branch {
@@ -280,6 +282,14 @@ class _CodeViewPageState extends State<CodeViewPage> {
         actions: [
           if (!_isImage && _content != null) ...[
             IconButton(
+              icon: Icon(_showLineNumbers
+                  ? Icons.format_list_numbered
+                  : Icons.format_list_bulleted),
+              tooltip: _showLineNumbers ? '隐藏行号' : '显示行号',
+              onPressed: () =>
+                  setState(() => _showLineNumbers = !_showLineNumbers),
+            ),
+            IconButton(
               icon: Icon(
                   _wrapEnabled ? Icons.wrap_text : Icons.wrap_text_outlined),
               tooltip: _wrapEnabled ? '关闭自动换行' : '自动换行',
@@ -294,8 +304,17 @@ class _CodeViewPageState extends State<CodeViewPage> {
               onSelected: (v) {
                 if (v == 'edit') _editFile();
                 if (v == 'delete') _deleteFile();
+                if (v == 'font_larger') {
+                  setState(() => _fontSize = (_fontSize + 1).clamp(10.0, 22.0));
+                }
+                if (v == 'font_smaller') {
+                  setState(() => _fontSize = (_fontSize - 1).clamp(10.0, 22.0));
+                }
               },
               itemBuilder: (_) => [
+                const PopupMenuItem(value: 'font_larger', child: Text('放大字体 (A+)')),
+                const PopupMenuItem(value: 'font_smaller', child: Text('缩小字体 (A-)')),
+                const PopupMenuDivider(),
                 const PopupMenuItem(value: 'edit', child: Text('编辑文件')),
                 const PopupMenuItem(value: 'delete', child: Text('删除文件')),
               ],
@@ -353,26 +372,70 @@ class _CodeViewPageState extends State<CodeViewPage> {
     final theme = Theme.of(context);
     final textStyle = TextStyle(
       fontFamily: 'monospace',
-      fontSize: 13,
+      fontSize: _fontSize,
       height: 1.6,
       color: CodeTheme.textOf(theme.brightness),
     );
+
+    final content = _content ?? '';
+    final lines = content.isEmpty ? <String>[] : content.split('\n');
+    final lineCount = lines.isEmpty ? 1 : lines.length;
+
+    // 行号样式与宽度
+    final lineNumberStyle = TextStyle(
+      fontFamily: 'monospace',
+      fontSize: _fontSize,
+      height: 1.6,
+      color: theme.brightness == Brightness.dark
+          ? Colors.white38
+          : Colors.black38,
+    );
+    final lineNumbersText = List.generate(lineCount, (i) => '${i + 1}').join('\n');
+
     final code = SelectableText.rich(_highlightCode(textStyle));
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
         decoration: BoxDecoration(
           color: CodeTheme.backgroundOf(theme.brightness),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.brightness == Brightness.dark
+                ? Colors.white10
+                : Colors.black.withValues(alpha: 0.06),
+          ),
         ),
-        child: _wrapEnabled
-            ? code
-            : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: code,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (_showLineNumbers) ...[
+              SelectableText(
+                lineNumbersText,
+                style: lineNumberStyle,
+                textAlign: TextAlign.right,
               ),
+              const SizedBox(width: 12),
+              Container(
+                width: 1,
+                color: theme.brightness == Brightness.dark
+                    ? Colors.white12
+                    : Colors.black12,
+              ),
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: _wrapEnabled
+                  ? code
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: code,
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }

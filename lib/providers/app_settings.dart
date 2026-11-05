@@ -6,14 +6,43 @@ class AppSettingsProvider extends ChangeNotifier {
   AppSettingsProvider({
     required bool darkMode,
     List<String>? searchHistory,
+    List<String>? recentRepos,
   })  : _darkMode = darkMode,
-        _searchHistory = List.of(searchHistory ?? const []);
+        _searchHistory = List.of(searchHistory ?? const []),
+        _recentRepos = List.of(recentRepos ?? const []);
 
   bool _darkMode;
   final List<String> _searchHistory;
+  final List<String> _recentRepos; // 格式: "owner/repo"
 
   bool get darkMode => _darkMode;
   List<String> get searchHistory => List.unmodifiable(_searchHistory);
+  List<String> get recentRepos => List.unmodifiable(_recentRepos);
+
+  /// 记录最近浏览过的仓库 (最多保留 15 个)
+  Future<void> addRecentRepo(String fullName) async {
+    final name = fullName.trim();
+    if (name.isEmpty || !name.contains('/')) return;
+    _recentRepos.remove(name);
+    _recentRepos.insert(0, name);
+    if (_recentRepos.length > 15) {
+      _recentRepos.removeRange(15, _recentRepos.length);
+    }
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('recent_repos', _recentRepos);
+    } catch (_) {}
+  }
+
+  Future<void> clearRecentRepos() async {
+    _recentRepos.clear();
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('recent_repos', const []);
+    } catch (_) {}
+  }
 
   /// 切换深色模式并写入本地存储。
   Future<void> setDarkMode(bool value) async {
@@ -75,6 +104,7 @@ class AppSettingsProvider extends ChangeNotifier {
     return AppSettingsProvider(
       darkMode: prefs.getBool('dark_mode') ?? false,
       searchHistory: prefs.getStringList('search_history') ?? const [],
+      recentRepos: prefs.getStringList('recent_repos') ?? const [],
     );
   }
 }

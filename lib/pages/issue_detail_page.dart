@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../utils/error_message.dart';
 import '../ai/ai_summary.dart';
 import '../api/gitee_api.dart';
@@ -346,6 +347,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
         state: state,
       );
       if (mounted) {
+        HapticFeedback.mediumImpact();
         setState(() {
           _issue = updated;
           _actionInFlight = false;
@@ -679,13 +681,24 @@ class _IssueHeader extends StatelessWidget {
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(
-                    open ? '开放' : '已关闭',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        open ? Icons.check_circle_outline : Icons.cancel_outlined,
+                        size: 14,
+                        color: color,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        open ? '开放' : '已关闭',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: color,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const Spacer(),

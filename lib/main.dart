@@ -100,7 +100,11 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) setState(() {});
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      AppLock.markLocked();
+    } else if (state == AppLifecycleState.resumed) {
+      setState(() {});
+    }
   }
 
   @override

@@ -21,6 +21,13 @@ class AppLock {
   static bool get enabled => _enabled;
   static bool get unlocked => _unlocked;
 
+  /// 应用切入后台时重置解锁状态
+  static void markLocked() {
+    if (_enabled) {
+      _unlocked = false;
+    }
+  }
+
   static Future<void> setEnabled(bool value) async {
     _enabled = value;
     _unlocked = !value;

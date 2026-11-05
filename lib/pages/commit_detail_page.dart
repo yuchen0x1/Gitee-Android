@@ -6,13 +6,13 @@ import '../models/check_run.dart';
 import '../models/commit.dart';
 import '../models/issue_comment.dart';
 import '../theme/app_theme.dart';
-import '../theme/code_theme.dart';
 import '../utils/launch_url.dart';
 import '../utils/error_message.dart';
 import '../widgets/app_image.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
+import '../widgets/diff_viewer.dart';
 
 /// Commit 详情页：提交信息、统计与文件变更列表。
 class CommitDetailPage extends StatefulWidget {
@@ -158,77 +158,18 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
       isScrollControlled: true,
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       builder: (context) {
-        final theme = Theme.of(context);
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.7,
+          initialChildSize: 0.8,
           minChildSize: 0.4,
           maxChildSize: 0.95,
           builder: (context, scrollController) {
-            return Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 8, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          file.filename,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium,
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Wrap(
-                      spacing: 8,
-                      children: [
-                        _DiffStat(label: file.status, color: AppColors.closed),
-                        _DiffStat(
-                            label: '+${file.additions}',
-                            color: AppColors.success),
-                        _DiffStat(
-                            label: '-${file.deletions}',
-                            color: AppColors.primaryRed),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: SingleChildScrollView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(16),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: CodeTheme.backgroundOf(theme.brightness),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: SelectableText(
-                        file.patch ?? '暂无 diff 数据',
-                        style: TextStyle(
-                          fontFamily: 'monospace',
-                          fontSize: 13,
-                          height: 1.5,
-                          color: CodeTheme.textOf(theme.brightness),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+            return DiffViewer(
+              patch: file.patch ?? '',
+              filename: file.filename,
+              status: file.status,
+              additions: file.additions,
+              deletions: file.deletions,
             );
           },
         );

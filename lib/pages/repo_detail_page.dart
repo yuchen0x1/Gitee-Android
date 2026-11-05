@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../api/gitee_api.dart';
 import '../models/file.dart';
 import '../models/repo.dart';
+import '../providers/app_settings.dart';
 import '../theme/app_theme.dart';
 import '../utils/launch_url.dart';
 import '../utils/error_message.dart';
@@ -94,6 +96,9 @@ class _RepoDetailPageState extends State<RepoDetailPage>
         _branch = initialBranch;
         _loading = false;
       });
+      if (mounted) {
+        AppSettingsScope.of(context).addRecentRepo(repo.fullName);
+      }
       unawaited(_loadSupplementaryData(repo, loadVersion));
     } catch (e) {
       if (mounted && loadVersion == _loadVersion) {
@@ -198,6 +203,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
           ? await GiteeApi.unstarRepo(widget.owner, widget.repo)
           : await GiteeApi.starRepo(widget.owner, widget.repo);
       if (ok && mounted) {
+        HapticFeedback.mediumImpact();
         setState(() => _isStarred = !_isStarred);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(_isStarred ? '已 Star' : '已取消 Star')),

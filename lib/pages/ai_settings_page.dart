@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../ai/ai_summary.dart';
 
@@ -6,10 +7,25 @@ import '../ai/ai_summary.dart';
 class AiSettingsPage extends StatefulWidget {
   const AiSettingsPage({super.key});
 
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+  static const _aiKeySecretKey = 'ai_api_key_secure';
+
   static Future<void> loadFromPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-    final key = prefs.getString('ai_api_key') ?? '';
-    AiSummary.apiKey = key.isEmpty ? null : key;
+    // 优先从安全存储读取，兼顾从旧版本 SharedPreferences 迁移
+    var key = await _secureStorage.read(key: _aiKeySecretKey);
+    if (key == null || key.isEmpty) {
+      final legacyKey = prefs.getString('ai_api_key');
+      if (legacyKey != null && legacyKey.isNotEmpty) {
+        key = legacyKey;
+        await _secureStorage.write(key: _aiKeySecretKey, value: legacyKey);
+        await prefs.remove('ai_api_key');
+      }
+    }
+    AiSummary.apiKey = (key != null && key.isNotEmpty) ? key : null;
     final url = prefs.getString('ai_base_url') ?? '';
     if (url.isNotEmpty) AiSummary.baseUrl = url;
     final model = prefs.getString('ai_model') ?? '';
@@ -43,7 +59,15 @@ class _AiSettingsPageState extends State<AiSettingsPage> {
         ? 'deepseek-chat'
         : _modelCtrl.text.trim();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('ai_api_key', AiSummary.apiKey ?? '');
+    if (AiSummary.apiKey != null && AiSummary.apiKey!.isNotEmpty) {
+      await AiSettingsPage._secureStorage.write(
+        key: AiSettingsPage._aiKeySecretKey,
+        value: AiSummary.apiKey!,
+      );
+    } else {
+      await AiSettingsPage._secureStorage.delete(key: AiSettingsPage._aiKeySecretKey);
+    }
+    await prefs.remove('ai_api_key');
     await prefs.setString('ai_base_url', AiSummary.baseUrl);
     await prefs.setString('ai_model', AiSummary.model);
     if (mounted) {

@@ -23,6 +23,7 @@ import 'subscriptions_page.dart';
 import 'user_repos_page.dart';
 import 'organizations_page.dart';
 import 'gist_list_page.dart';
+import 'home_page.dart';
 import 'ssh_keys_page.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -491,13 +492,20 @@ class _ProfilePageState extends State<ProfilePage> {
                               }
                               return;
                             }
-                            if (context.mounted) Navigator.pop(context);
                             final activeToken = await AuthStore.readToken();
                             if (activeToken == null || activeToken.isEmpty) {
                               return;
                             }
                             GiteeApi.setToken(activeToken);
-                            await widget.onRefresh?.call();
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              // 彻底重建 HomePage，确保所有 Tab 和状态清空并以新账号重新加载
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                    builder: (_) => const HomePage()),
+                                (route) => false,
+                              );
+                            }
                           },
                           child: const Text('切换'),
                         ),

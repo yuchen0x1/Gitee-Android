@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../auth/auth_store.dart';
 import '../api/gitee_api.dart';
@@ -169,7 +170,12 @@ class _HomePageState extends State<HomePage> {
               Expanded(child: content),
               GlassNavigationBar(
                 selectedIndex: _currentIndex,
-                onDestinationSelected: (i) => setState(() => _currentIndex = i),
+                onDestinationSelected: (i) {
+                  if (_currentIndex != i) {
+                    HapticFeedback.lightImpact();
+                  }
+                  setState(() => _currentIndex = i);
+                },
                 destinations: [
                   NavigationDestination(
                     icon: _navIcon(Icons.dynamic_feed_outlined),
