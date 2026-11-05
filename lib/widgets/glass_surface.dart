@@ -1,6 +1,7 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
 /// A restrained glass surface for high-value UI layers.
 /// [simple] 模式跳过 BackdropFilter，用半透明纯色 + 描边模拟质感，
@@ -31,21 +32,23 @@ class GlassSurface extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final surface = tint ??
         (isDark
-            ? Colors.white.withValues(alpha: simple ? 0.085 : 0.075)
-            : Colors.white.withValues(alpha: simple ? 0.82 : 0.68));
+            ? const Color(0xFF161B22).withValues(alpha: simple ? 0.92 : 0.82)
+            : Colors.white.withValues(alpha: simple ? 0.90 : 0.78));
     final border = isDark
-        ? Colors.white.withValues(alpha: 0.13)
-        : Colors.white.withValues(alpha: 0.72);
+        ? const Color(0xFF30363D).withValues(alpha: 0.85)
+        : Colors.white.withValues(alpha: 0.88);
 
     final decoration = BoxDecoration(
       color: surface,
       borderRadius: borderRadius,
-      border: bordered ? Border.all(color: border) : null,
+      border: bordered ? Border.all(color: border, width: 1.1) : null,
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.07),
-          blurRadius: simple ? 8 : 22,
-          offset: Offset(0, simple ? 3 : 10),
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.45)
+              : const Color(0xFF64748B).withValues(alpha: 0.08),
+          blurRadius: simple ? 12 : 24,
+          offset: Offset(0, simple ? 4 : 10),
         ),
       ],
     );
@@ -84,18 +87,34 @@ class GlassNavigationBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-      child: GlassSurface(
-        borderRadius: BorderRadius.circular(24),
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: NavigationBar(
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onDestinationSelected,
-          destinations: destinations,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          height: 68,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: isDark
+                  ? const Color(0xFF000000).withValues(alpha: 0.6)
+                  : AppColors.primaryRed.withValues(alpha: 0.12),
+              blurRadius: 28,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: GlassSurface(
+          borderRadius: BorderRadius.circular(28),
+          padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+          blur: 24,
+          child: NavigationBar(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: onDestinationSelected,
+            destinations: destinations,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            height: 66,
+          ),
         ),
       ),
     );

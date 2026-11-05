@@ -21,8 +21,8 @@ enum SkeletonVariant {
 
 Shimmer _shimmerOf(BuildContext context, Widget child) {
   final dark = Theme.of(context).brightness == Brightness.dark;
-  final base = dark ? const Color(0xFF2A2A3D) : const Color(0xFFE8E9EF);
-  final highlight = dark ? const Color(0xFF3A3A52) : const Color(0xFFF5F6FA);
+  final base = dark ? const Color(0xFF161B22) : const Color(0xFFE2E8F0);
+  final highlight = dark ? const Color(0xFF2D333B) : const Color(0xFFF1F5F9);
   return Shimmer.fromColors(baseColor: base, highlightColor: highlight, child: child);
 }
 

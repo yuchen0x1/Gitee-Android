@@ -38,16 +38,29 @@ class RepoCard extends StatelessWidget {
                   children: [
                     Hero(
                       tag: 'repo-avatar-${repo.fullName}',
-                      child: AppAvatar(
-                          url: repo.ownerAvatar, size: 40, radius: 8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.white24
+                                : Colors.black12,
+                          ),
+                        ),
+                        child: AppAvatar(
+                            url: repo.ownerAvatar, size: 40, radius: 10),
+                      ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         repo.fullName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
                       ),
                     ),
                     if (repo.isPrivate)
@@ -55,12 +68,25 @@ class RepoCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.closed.withValues(alpha: 0.12),
+                          color: AppColors.closed.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppColors.closed.withValues(alpha: 0.3),
+                            width: 0.8,
+                          ),
                         ),
-                        child: const Text('私有',
-                            style: TextStyle(
-                                fontSize: 11, color: AppColors.closed)),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.lock_outline, size: 11, color: AppColors.closed),
+                            SizedBox(width: 3),
+                            Text('私有',
+                                style: TextStyle(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.closed)),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -76,15 +102,26 @@ class RepoCard extends StatelessWidget {
                   children: [
                     if (repo.language.isNotEmpty && repo.language != '未知') ...[
                       Container(
-                        width: 10,
-                        height: 10,
+                        width: 9,
+                        height: 9,
                         decoration: BoxDecoration(
                           color: AppColors.languageColor(repo.language),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.languageColor(repo.language)
+                                  .withValues(alpha: 0.6),
+                              blurRadius: 6,
+                              spreadRadius: 1,
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(width: 6),
-                      Text(repo.language, style: theme.textTheme.bodySmall),
+                      Text(repo.language,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          )),
                       const SizedBox(width: 16),
                     ],
                     const Icon(Icons.star_border,

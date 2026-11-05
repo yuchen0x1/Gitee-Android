@@ -367,46 +367,88 @@ class _EventCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            AppAvatar(url: event.actor?.avatarUrl ?? '', size: 40, radius: 10),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(_eventIcon(event.type),
-                          size: 18, color: AppColors.primaryRed),
-                      const SizedBox(width: 6),
-                      Expanded(
+    final isDark = theme.brightness == Brightness.dark;
+    final accent = isDark ? const Color(0xFF79C0FF) : AppColors.primaryRed;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: GlassSurface(
+        simple: true,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: accent.withValues(alpha: 0.5),
+                    width: 1.2,
+                  ),
+                ),
+                child: AppAvatar(url: event.actor?.avatarUrl ?? '', size: 38, radius: 19),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(_eventIcon(event.type), size: 16, color: accent),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            event.actor?.login ?? '',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14.5,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      event.payload,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                    if (event.repoName.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: accent.withValues(alpha: 0.2), width: 0.8),
+                        ),
                         child: Text(
-                          event.actor?.login ?? '',
-                          style: theme.textTheme.titleMedium,
-                          overflow: TextOverflow.ellipsis,
+                          event.repoName,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                            color: accent,
+                          ),
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(event.payload, style: theme.textTheme.bodyMedium),
-                  if (event.repoName.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(event.repoName, style: theme.textTheme.bodySmall),
+                    const SizedBox(height: 6),
+                    Text(
+                      formatRelativeTime(event.createdAt),
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 11),
+                    ),
                   ],
-                  const SizedBox(height: 6),
-                  Text(formatRelativeTime(event.createdAt),
-                      style: theme.textTheme.bodySmall),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
