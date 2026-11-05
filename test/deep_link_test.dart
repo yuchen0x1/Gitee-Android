@@ -19,4 +19,21 @@ void main() {
 
     expect(find.text('alice'), findsOneWidget);
   });
+
+  testWidgets('parses https gitee.com web url as deep-link route',
+      (tester) async {
+    final navigatorKey = GlobalKey<NavigatorState>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigatorKey,
+        home: const Scaffold(body: Text('home')),
+      ),
+    );
+
+    handleDeepLink(Uri.parse('https://gitee.com/alice'), navigatorKey);
+    await tester.pumpAndSettle();
+
+    expect(find.text('alice'), findsOneWidget);
+  });
 }
