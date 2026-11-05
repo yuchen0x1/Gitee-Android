@@ -518,16 +518,18 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                               onPressed: _editMilestone,
                             ),
                           ...issue.labels.map(
-                            (label) => InputChip(
-                              avatar: Icon(Icons.circle,
-                                  size: 10,
-                                  color: label.color.isEmpty
-                                      ? AppColors.primaryRed
-                                      : Color(int.parse(
-                                          'FF${label.color}', radix: 16))),
-                              label: Text(label.name),
-                              onPressed: _editLabels,
-                            ),
+                            (label) {
+                              final cleanColor = label.color.replaceAll('#', '');
+                              final parsedColor = int.tryParse('FF$cleanColor', radix: 16);
+                              final color = (cleanColor.isEmpty || parsedColor == null)
+                                  ? AppColors.primaryRed
+                                  : Color(parsedColor);
+                              return InputChip(
+                                avatar: Icon(Icons.circle, size: 10, color: color),
+                                label: Text(label.name),
+                                onPressed: _editLabels,
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -649,6 +651,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   @override
   void dispose() {
     _scroll.dispose();
+    _commentCtrl.dispose();
     super.dispose();
   }
 }

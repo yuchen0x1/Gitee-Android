@@ -8,7 +8,7 @@ class AiSettingsPage extends StatefulWidget {
   const AiSettingsPage({super.key});
 
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(resetOnError: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
   static const _aiKeySecretKey = 'ai_api_key_secure';

@@ -9,7 +9,7 @@ class AuthStore {
 
   static const _tokenKey = 'gitee_token';
   static const _secureStorage = FlutterSecureStorage(
-    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    aOptions: AndroidOptions(resetOnError: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 

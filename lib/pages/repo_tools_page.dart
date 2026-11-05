@@ -680,20 +680,22 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                           runSpacing: 8,
                           children: _labels
                               .map(
-                                (label) => InputChip(
-                                  label: Text(label.name),
-                                  backgroundColor: label.color.isEmpty
+                                (label) {
+                                  final cleanColor = label.color.replaceAll('#', '');
+                                  final parsedColor = int.tryParse('FF$cleanColor', radix: 16);
+                                  final color = (cleanColor.isEmpty || parsedColor == null)
                                       ? null
-                                      : Color(int.parse('FF${label.color}',
-                                              radix: 16)),
-                                  labelStyle: TextStyle(
-                                    color: label.color.isEmpty
-                                        ? null
-                                        : Colors.white,
-                                  ),
-                                  onDeleted: () => _deleteLabel(label),
-                                  deleteIconColor: Colors.white70,
-                                ),
+                                      : Color(parsedColor);
+                                  return InputChip(
+                                    label: Text(label.name),
+                                    backgroundColor: color,
+                                    labelStyle: TextStyle(
+                                      color: color == null ? null : Colors.white,
+                                    ),
+                                    onDeleted: () => _deleteLabel(label),
+                                    deleteIconColor: Colors.white70,
+                                  );
+                                },
                               )
                               .toList(),
                         ),

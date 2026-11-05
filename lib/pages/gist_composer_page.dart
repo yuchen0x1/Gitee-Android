@@ -67,6 +67,14 @@ class _GistComposerPageState extends State<GistComposerPage> {
   }
 
   @override
+  void dispose() {
+    _descriptionCtrl.dispose();
+    _filenameCtrl.dispose();
+    _contentCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isEditing = widget.existing != null;
     return Scaffold(
