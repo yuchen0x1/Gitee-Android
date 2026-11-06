@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/notification.dart';
 import '../theme/app_theme.dart';
+import 'glass_surface.dart';
 import 'state_views.dart';
 import 'time_format.dart';
 
@@ -73,68 +74,78 @@ class _RepoGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final unread = items.where((n) => n.unread).length;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ExpansionTile(
-        leading: unread > 0
-            ? Badge(
-                label: Text('$unread'),
-                child: const Icon(Icons.notifications_outlined),
-              )
-            : const Icon(Icons.notifications_none),
-        title: Text(repo,
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        subtitle:
-            Text('${items.length} 条通知${unread > 0 ? " · $unread 未读" : ''}'),
-        children: items.map((item) {
-          return Dismissible(
-            key: ValueKey('notification_${item.id}_${items.indexOf(item)}'),
-            direction: onDismiss != null
-                ? DismissDirection.endToStart
-                : DismissDirection.none,
-            background: onDismiss != null
-                ? Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    margin: const EdgeInsets.symmetric(vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.success,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(Icons.done_all, color: Colors.white),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: GlassSurface(
+        simple: true,
+        borderRadius: BorderRadius.circular(16),
+        child: Theme(
+          data: theme.copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            leading: unread > 0
+                ? Badge(
+                    label: Text('$unread'),
+                    backgroundColor: AppColors.primaryRed,
+                    child: const Icon(Icons.notifications_active_outlined, color: AppColors.primaryRed),
                   )
-                : null,
-            onDismissed: onDismiss != null ? (_) => onDismiss!(item) : null,
-            child: ListTile(
-              dense: true,
-              leading: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: item.unread
-                      ? AppColors.primaryRed.withValues(alpha: 0.1)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8),
+                : const Icon(Icons.notifications_none_outlined),
+            title: Text(repo,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.w600, fontSize: 14.5)),
+            subtitle: Text('${items.length} 条通知${unread > 0 ? " · $unread 未读" : ''}'),
+            children: items.map((item) {
+              return Dismissible(
+                key: ValueKey('notification_${item.id}_${items.indexOf(item)}'),
+                direction: onDismiss != null
+                    ? DismissDirection.endToStart
+                    : DismissDirection.none,
+                background: onDismiss != null
+                    ? Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        margin: const EdgeInsets.symmetric(vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.success,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.done_all, color: Colors.white),
+                      )
+                    : null,
+                onDismissed: onDismiss != null ? (_) => onDismiss!(item) : null,
+                child: ListTile(
+                  dense: true,
+                  leading: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: item.unread
+                          ? AppColors.primaryRed.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      border: item.unread
+                          ? Border.all(color: AppColors.primaryRed.withValues(alpha: 0.3), width: 0.8)
+                          : null,
+                    ),
+                    child: Icon(_icon(item.type),
+                        size: 16,
+                        color: item.unread
+                            ? AppColors.primaryRed
+                            : AppColors.textTertiary),
+                  ),
+                  title: Text(item.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          fontWeight:
+                              item.unread ? FontWeight.w600 : FontWeight.normal)),
+                  subtitle: Text(formatRelativeTime(item.updatedAt),
+                      style: theme.textTheme.bodySmall),
+                  onTap: () => onTap(item),
                 ),
-                child: Icon(_icon(item.type),
-                    size: 16,
-                    color: item.unread
-                        ? AppColors.primaryRed
-                        : AppColors.textTertiary),
-              ),
-              title: Text(item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                      fontWeight:
-                          item.unread ? FontWeight.w600 : FontWeight.normal)),
-              subtitle: Text(formatRelativeTime(item.updatedAt),
-                  style: theme.textTheme.bodySmall),
-              onTap: () => onTap(item),
-            ),
-          );
-        }).toList(),
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }

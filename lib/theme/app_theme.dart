@@ -5,20 +5,21 @@ import 'package:flutter/cupertino.dart';
 class AppColors {
   AppColors._();
 
-  static const Color primaryRed = Color(0xFFC71D23);
-  static const Color primaryLight = Color(0xFFFF6B6B);
-  static const Color primaryDark = Color(0xFF8B1519);
+  static const Color primaryRed = Color(0xFFE53935);
+  static const Color primaryLight = Color(0xFFFF5252);
+  static const Color primaryDark = Color(0xFFB71C1C);
+  static const Color neonGlow = Color(0xFFFF4081);
 
-  static const Color bgPage = Color(0xFFEAF0F5);
+  static const Color bgPage = Color(0xFFF0F4F8);
   static const Color bgCard = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1A1A2E);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF9CA3AF);
-  static const Color divider = Color(0xFFE5E7EB);
+  static const Color textPrimary = Color(0xFF1E293B);
+  static const Color textSecondary = Color(0xFF64748B);
+  static const Color textTertiary = Color(0xFF94A3B8);
+  static const Color divider = Color(0xFFE2E8F0);
 
   static const Color starColor = Color(0xFFFFB800);
   static const Color success = Color(0xFF10B981);
-  static const Color closed = Color(0xFF6B7280);
+  static const Color closed = Color(0xFF64748B);
 
   /// 语义色：文件夹图标、已合并的 PR。
   static const Color folderIcon = Color(0xFFFFB800);
@@ -101,19 +102,19 @@ const _light = _Palette(
 );
 
 const _dark = _Palette(
-  scaffold: Color(0xFF0B1118),
-  card: Color(0xFF1B1E22),
-  foreground: Colors.white,
-  titleColor: Colors.white,
-  bodyColor: Colors.white70,
-  captionColor: Color(0xFF9299A3),
-  divider: Color(0xFF30343A),
-  inputFill: Color(0x1AFFFFFF),
-  navLabel: Colors.white70,
-  tabUnselected: Color(0xFF8B8B9E),
-  tabIndicator: AppColors.primaryLight,
-  outlinedFg: Colors.white70,
-  outlinedBorder: Color(0xFF3A3A52),
+  scaffold: Color(0xFF0D1117), // GitHub / Cyberpunk 深空暗黑
+  card: Color(0xFF161B22),     // 科技感微高亮暗夜面板色
+  foreground: Color(0xFFE6EDF3),
+  titleColor: Color(0xFFF0F6FC),
+  bodyColor: Color(0xFF8B949E),
+  captionColor: Color(0xFF6E7681),
+  divider: Color(0xFF30363D),
+  inputFill: Color(0x1F8B949E),
+  navLabel: Color(0xFFC9D1D9),
+  tabUnselected: Color(0xFF8B949E),
+  tabIndicator: Color(0xFFFF5252), // 极光科技红
+  outlinedFg: Color(0xFFC9D1D9),
+  outlinedBorder: Color(0xFF30363D),
 );
 
 // ---------- 构建主题 ----------

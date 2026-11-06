@@ -283,36 +283,66 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildHeader(User user, ThemeData theme) {
-    return GlassSurface(
-      borderRadius: BorderRadius.zero,
-      tint: AppColors.primaryRed.withValues(alpha: 0.82),
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryDark,
+            AppColors.primaryRed,
+            Color(0xFF1E1B4B),
+          ],
+        ),
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 28, 16, 24),
       child: Column(
         children: [
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 3),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryLight.withValues(alpha: 0.4),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
-            child: AppAvatar(url: user.avatarUrl, size: 64, radius: 32),
+            child: AppAvatar(url: user.avatarUrl, size: 68, radius: 34),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
             user.name,
             style: const TextStyle(
-                fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              letterSpacing: -0.3,
+            ),
           ),
           const SizedBox(height: 4),
-          Text('@${user.login}',
-              style: const TextStyle(fontSize: 14, color: Colors.white70)),
-          const SizedBox(height: 10),
-          Text(
-            user.bio,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white24, width: 0.8),
+            ),
+            child: Text('@${user.login}',
+                style: const TextStyle(fontSize: 13, color: Colors.white70, fontFamily: 'monospace')),
           ),
+          if (user.bio.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              user.bio,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.88), fontSize: 13),
+            ),
+          ],
         ],
       ),
     );
@@ -321,6 +351,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget _buildStats(User user) {
     return GlassSurface(
       padding: const EdgeInsets.symmetric(vertical: 14),
+      simple: true,
       child: Padding(
         padding: EdgeInsets.zero,
         child: Row(
@@ -569,17 +600,34 @@ class _StatItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        child: Column(
-          children: [
-            Text(value.toString(),
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(label, style: theme.textTheme.bodySmall),
-          ],
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            children: [
+              Text(
+                value.toString(),
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: isDark ? const Color(0xFF79C0FF) : AppColors.primaryRed,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.8),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

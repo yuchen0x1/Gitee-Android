@@ -128,9 +128,20 @@ class DiffViewer extends StatelessWidget {
             child: Wrap(
               spacing: 8,
               children: [
-                _DiffTag(label: status, color: AppColors.closed),
-                _DiffTag(label: '+$additions', color: AppColors.success),
-                _DiffTag(label: '-$deletions', color: AppColors.primaryRed),
+                _DiffTag(
+                  label: status,
+                  color: isDark ? const Color(0xFF8B949E) : AppColors.closed,
+                ),
+                _DiffTag(
+                  label: '+$additions',
+                  color: isDark ? const Color(0xFF3FB950) : AppColors.success,
+                  glow: true,
+                ),
+                _DiffTag(
+                  label: '-$deletions',
+                  color: isDark ? const Color(0xFFF85149) : AppColors.primaryRed,
+                  glow: true,
+                ),
               ],
             ),
           ),
@@ -253,23 +264,37 @@ class DiffViewer extends StatelessWidget {
 class _DiffTag extends StatelessWidget {
   final String label;
   final Color color;
+  final bool glow;
 
-  const _DiffTag({required this.label, required this.color});
+  const _DiffTag({required this.label, required this.color, this.glow = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: color.withValues(alpha: glow ? 0.4 : 0.2),
+          width: 0.8,
+        ),
+        boxShadow: glow
+            ? [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.25),
+                  blurRadius: 6,
+                )
+              ]
+            : null,
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
           fontSize: 12,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.2,
         ),
       ),
     );
