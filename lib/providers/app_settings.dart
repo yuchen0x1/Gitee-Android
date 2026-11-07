@@ -1,21 +1,29 @@
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// 深色模式取值：跟随系统 / 浅色 / 深色。
+enum AppThemeMode { system, light, dark }
+
 /// 应用级设置，负责深色模式与搜索历史的持久化。
 class AppSettingsProvider extends ChangeNotifier {
   AppSettingsProvider({
-    required bool darkMode,
+    AppThemeMode themeMode = AppThemeMode.system,
     List<String>? searchHistory,
     List<String>? recentRepos,
-  })  : _darkMode = darkMode,
+    bool onboardingSeen = false,
+  })  : _themeMode = themeMode,
         _searchHistory = List.of(searchHistory ?? const []),
-        _recentRepos = List.of(recentRepos ?? const []);
+        _recentRepos = List.of(recentRepos ?? const []),
+        _onboardingSeen = onboardingSeen;
 
-  bool _darkMode;
+  AppThemeMode _themeMode;
+  bool _onboardingSeen;
   final List<String> _searchHistory;
   final List<String> _recentRepos; // 格式: "owner/repo"
 
-  bool get darkMode => _darkMode;
+  AppThemeMode get themeMode => _themeMode;
+  bool get onboardingSeen => _onboardingSeen;
+  bool get darkMode => _themeMode == AppThemeMode.dark;
   List<String> get searchHistory => List.unmodifiable(_searchHistory);
   List<String> get recentRepos => List.unmodifiable(_recentRepos);
 
@@ -44,20 +52,29 @@ class AppSettingsProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// 切换深色模式并写入本地存储。
-  Future<void> setDarkMode(bool value) async {
-    if (_darkMode == value) return;
-    _darkMode = value;
+  /// 设置主题模式并写入本地存储。
+  Future<void> setThemeMode(AppThemeMode value) async {
+    if (_themeMode == value) return;
+    _themeMode = value;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('dark_mode', value);
+      await prefs.setString('theme_mode', value.name);
     } catch (_) {
       // 持久化失败不影响内存状态。
     }
   }
 
-  Future<void> toggleDarkMode() => setDarkMode(!_darkMode);
+  /// 标记已看过首启引导页。
+  Future<void> markOnboardingSeen() async {
+    if (_onboardingSeen) return;
+    _onboardingSeen = true;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('onboarding_seen', true);
+    } catch (_) {}
+  }
 
   /// 新增一条搜索历史，最多保留 10 条。
   Future<void> addSearchHistory(String keyword) async {
@@ -101,10 +118,13 @@ class AppSettingsProvider extends ChangeNotifier {
 
   static Future<AppSettingsProvider> load() async {
     final prefs = await SharedPreferences.getInstance();
+    final themeModeName = prefs.getString('theme_mode');
     return AppSettingsProvider(
-      darkMode: prefs.getBool('dark_mode') ?? false,
+      themeMode: AppThemeMode.values.asNameMap()[themeModeName] ??
+          AppThemeMode.system,
       searchHistory: prefs.getStringList('search_history') ?? const [],
       recentRepos: prefs.getStringList('recent_repos') ?? const [],
+      onboardingSeen: prefs.getBool('onboarding_seen') ?? false,
     );
   }
 }

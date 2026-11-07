@@ -38,6 +38,23 @@ class Repo {
     this.readme,
   });
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'full_name': fullName,
+        'name': name,
+        'description': description,
+        'owner': {'login': ownerLogin, 'avatar_url': ownerAvatar},
+        'stargazers_count': stars,
+        'forks_count': forks,
+        'watchers_count': watchers,
+        'language': language,
+        'private': isPrivate,
+        'html_url': htmlUrl,
+        'default_branch': defaultBranch,
+        'created_at': createdAt,
+        'updated_at': updatedAt,
+      };
+
   factory Repo.fromJson(Map<String, dynamic> json) {
     final owner = json['owner'];
     final ownerMap = owner is Map ? owner : const <String, dynamic>{};

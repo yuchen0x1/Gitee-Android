@@ -134,10 +134,7 @@ class RepoCard extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(_count(repo.forks), style: theme.textTheme.bodySmall),
                     const Spacer(),
-                    Text(
-                      '更新于 ${formatRelativeTime(repo.updatedAt)}',
-                      style: theme.textTheme.bodySmall,
-                    ),
+                    _buildUpdateTime(theme),
                   ],
                 ),
               ],
@@ -146,6 +143,43 @@ class RepoCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildUpdateTime(ThemeData theme) {
+    final updated = repo.updatedAt;
+    if (updated.isEmpty) return const SizedBox.shrink();
+    final time = DateTime.tryParse(updated)?.toLocal();
+    if (time == null) return const SizedBox.shrink();
+    final diff = DateTime.now().difference(time);
+    final String label;
+    if (diff.inMinutes < 1) {
+      label = '刚刚更新';
+    } else if (diff.inHours < 24 && _isSameDay(time)) {
+      label = '今天更新';
+    } else if (diff.inDays == 1 || (diff.inHours < 48 && _isYesterday(time))) {
+      label = '昨天更新';
+    } else {
+      label = '更新于 ${formatRelativeTime(updated)}';
+    }
+    // 超过 30 天视为久未更新，用弱化色
+    final stale = diff.inDays >= 30;
+    return Text(
+      label,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: stale ? AppColors.textTertiary : AppColors.textSecondary,
+        fontWeight: stale ? FontWeight.w400 : FontWeight.w500,
+      ),
+    );
+  }
+
+  bool _isSameDay(DateTime t) {
+    final now = DateTime.now();
+    return t.year == now.year && t.month == now.month && t.day == now.day;
+  }
+
+  bool _isYesterday(DateTime t) {
+    final y = DateTime.now().subtract(const Duration(days: 1));
+    return t.year == y.year && t.month == y.month && t.day == y.day;
   }
 
   String _count(int value) {

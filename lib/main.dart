@@ -8,6 +8,8 @@ import 'pages/login_page.dart';
 import 'providers/app_settings.dart';
 import 'theme/app_theme.dart';
 import 'pages/ai_settings_page.dart';
+import 'pages/onboarding_page.dart';
+import 'services/offline_cache.dart';
 import 'utils/deep_link.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -19,6 +21,7 @@ Future<void> main() async {
     if (_handlingUnauthorized) return;
     _handlingUnauthorized = true;
     await AuthStore.clear();
+    await OfflineCache.clear();
     GiteeApi.clearToken();
     final navigator = rootNavigatorKey.currentState;
     if (navigator != null) {
@@ -66,7 +69,11 @@ class GiteeApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             theme: buildLightTheme(),
             darkTheme: buildDarkTheme(),
-            themeMode: settings.darkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: switch (settings.themeMode) {
+                AppThemeMode.system => ThemeMode.system,
+                AppThemeMode.light => ThemeMode.light,
+                AppThemeMode.dark => ThemeMode.dark,
+              },
             home: const SplashPage(),
           ),
         ),
@@ -145,8 +152,11 @@ class _SplashPageState extends State<SplashPage> {
         MaterialPageRoute(builder: (_) => const HomePage()),
       );
     } else {
+      final settings = AppSettingsScope.of(context);
+      final Widget next =
+          settings.onboardingSeen ? const LoginPage() : const OnboardingPage();
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
+        MaterialPageRoute(builder: (_) => next),
       );
     }
   }

@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../auth/auth_store.dart';
 import '../api/gitee_api.dart';
 import '../models/user.dart';
+import '../services/offline_cache.dart';
 import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_badge.dart';
@@ -113,6 +114,7 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _logout() async {
     await AuthStore.clear();
+    await OfflineCache.clear();
     GiteeApi.clearToken();
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
@@ -184,17 +186,20 @@ class _HomePageState extends State<HomePage> {
                   ),
                   const NavigationDestination(
                     icon: Icon(Icons.folder_outlined),
-                    selectedIcon: Icon(Icons.folder, color: AppColors.primaryRed),
+                    selectedIcon:
+                        Icon(Icons.folder, color: AppColors.primaryRed),
                     label: '仓库',
                   ),
                   const NavigationDestination(
                     icon: Icon(Icons.search),
-                    selectedIcon: Icon(Icons.search, color: AppColors.primaryRed),
+                    selectedIcon:
+                        Icon(Icons.search, color: AppColors.primaryRed),
                     label: '搜索',
                   ),
                   const NavigationDestination(
                     icon: Icon(Icons.person_outline),
-                    selectedIcon: Icon(Icons.person, color: AppColors.primaryRed),
+                    selectedIcon:
+                        Icon(Icons.person, color: AppColors.primaryRed),
                     label: '我的',
                   ),
                 ],

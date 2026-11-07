@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../models/file.dart';
+import '../services/offline_cache.dart';
+import '../utils/error_message.dart';
 import '../theme/app_theme.dart';
 import '../widgets/branch_selector.dart';
 import '../widgets/skeleton_list.dart';
@@ -36,6 +39,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
   String _path = '';
   String _branch = '';
   bool _loading = true;
+  bool _offline = false;
   int _filesGeneration = 0;
   String? _error;
 
@@ -67,6 +71,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
     final generation = ++_filesGeneration;
     setState(() {
       _loading = true;
+      _offline = false;
       _error = null;
     });
     try {
@@ -80,14 +85,44 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
         if (a.type == b.type) return a.name.compareTo(b.name);
         return a.type == 'dir' ? -1 : 1;
       });
+      unawaited(OfflineCache.write(
+        key: OfflineCache.key(
+          token: GiteeApi.token,
+          type: 'contents',
+          parts: [widget.owner, widget.repo, _path, _branch],
+        ),
+        value: files.map((file) => file.toJson()).toList(),
+      ));
       if (!mounted || generation != _filesGeneration) return;
       setState(() {
         _files = files;
+        _offline = false;
         _loading = false;
         _error = null;
       });
     } catch (e) {
-      if (mounted && generation == _filesGeneration) {
+      final cached = await OfflineCache.read(OfflineCache.key(
+        token: GiteeApi.token,
+        type: 'contents',
+        parts: [widget.owner, widget.repo, _path, _branch],
+      ));
+      final value = cached?.value;
+      if (value is List && mounted && generation == _filesGeneration) {
+        final files = value
+            .whereType<Map>()
+            .map((item) => RepoFile.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+        files.sort((a, b) {
+          if (a.type == b.type) return a.name.compareTo(b.name);
+          return a.type == 'dir' ? -1 : 1;
+        });
+        setState(() {
+          _files = files;
+          _offline = true;
+          _loading = false;
+          _error = null;
+        });
+      } else if (mounted && generation == _filesGeneration) {
         setState(() {
           _loading = false;
           _error = friendlyError(e);
@@ -119,6 +154,23 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
     _loadFiles();
   }
 
+  /// 直接跳转到路径层级中的某一级目录。
+  void _jumpTo(int segmentIndex) {
+    if (segmentIndex < 0 || segmentIndex >= _segmentCount) return;
+    final target = _segments.take(segmentIndex + 1).join('/');
+    if (target == _path) return;
+    setState(() {
+      _path = target;
+      _files = [];
+      _error = null;
+    });
+    _loadFiles();
+  }
+
+  List<String> get _segments => _path.isEmpty ? const [] : _path.split('/');
+
+  int get _segmentCount => _segments.length;
+
   void _openFile(RepoFile file) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -135,12 +187,22 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final currentName =
         _path.isEmpty ? (widget.title ?? '/') : _path.split('/').last;
     return Scaffold(
       appBar: AppBar(
-        title: Text(currentName, overflow: TextOverflow.ellipsis),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(currentName, overflow: TextOverflow.ellipsis),
+            ),
+            if (_offline) ...[
+              const SizedBox(width: 6),
+              const Icon(Icons.cloud_off_outlined, size: 18),
+            ],
+          ],
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           tooltip: _history.isEmpty ? '返回' : '上一级',
@@ -167,14 +229,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
                 const Icon(Icons.folder_outlined,
                     size: 16, color: AppColors.textTertiary),
                 const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    _path.isEmpty ? '/' : _path,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
+                Expanded(child: _buildBreadcrumb()),
               ],
             ),
           ),
@@ -185,7 +240,9 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
   }
 
   Widget _buildBody() {
-    if (_files.isEmpty && _loading) return const SkeletonList(variant: SkeletonVariant.issueRow);
+    if (_files.isEmpty && _loading) {
+      return const SkeletonList(variant: SkeletonVariant.issueRow);
+    }
     if (_files.isEmpty && _error != null) {
       return ErrorState(message: _error!, onRetry: _loadFiles);
     }
@@ -237,5 +294,53 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
     if (bytes < 1024) return '${bytes}B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
     return '${(bytes / 1024 / 1024).toStringAsFixed(1)}MB';
+  }
+
+  /// 可点击面包屑：根目录 / 一级 / 二级 … 当前目录。
+  Widget _buildBreadcrumb() {
+    final children = <Widget>[
+      _crumbItem('/', 0),
+    ];
+    for (var i = 0; i < _segmentCount; i++) {
+      final isLast = i == _segmentCount - 1;
+      children.add(_crumbSeparator());
+      children.add(_crumbItem(_segments[i], i + 1, last: isLast));
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      reverse: true,
+      child: Row(mainAxisSize: MainAxisSize.min, children: children),
+    );
+  }
+
+  Widget _crumbSeparator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(Icons.chevron_right, size: 14, color: AppColors.textTertiary),
+    );
+  }
+
+  Widget _crumbItem(String label, int segmentIndex, {bool last = false}) {
+    final theme = Theme.of(context);
+    return GestureDetector(
+      onTap: () => _jumpTo(segmentIndex),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: last
+            ? BoxDecoration(
+                color: AppColors.primaryRed.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              )
+            : null,
+        child: Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            fontWeight: last ? FontWeight.w700 : FontWeight.w400,
+            color:
+                last ? AppColors.primaryRed : theme.textTheme.bodySmall?.color,
+          ),
+        ),
+      ),
+    );
   }
 }

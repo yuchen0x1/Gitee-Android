@@ -12,6 +12,8 @@ class PagedListView<T> extends StatefulWidget {
   final IconData emptyIcon;
   final String emptyTitle;
   final String emptySubtitle;
+  final String? emptyActionLabel;
+  final VoidCallback? emptyOnAction;
   final bool supportsPagination;
   final EdgeInsetsGeometry padding;
 
@@ -22,6 +24,8 @@ class PagedListView<T> extends StatefulWidget {
     required this.emptyTitle,
     this.emptyIcon = Icons.inbox_outlined,
     this.emptySubtitle = '',
+    this.emptyActionLabel,
+    this.emptyOnAction,
     this.supportsPagination = true,
     this.padding = const EdgeInsets.all(16),
   });
@@ -104,8 +108,9 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
         icon: widget.emptyIcon,
         title: widget.emptyTitle,
         subtitle: widget.emptySubtitle,
-        actionLabel: '刷新',
-        onAction: () => _load(refresh: true),
+        actionLabel: widget.emptyActionLabel ?? '刷新',
+        onAction:
+            widget.emptyOnAction ?? () => _load(refresh: true),
       );
     }
     return RefreshIndicator(

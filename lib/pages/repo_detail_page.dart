@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../api/gitee_api.dart';
 import '../models/file.dart';
+import '../services/offline_cache.dart';
 import '../models/repo.dart';
 import '../providers/app_settings.dart';
 import '../theme/app_theme.dart';
@@ -57,6 +58,8 @@ class _RepoDetailPageState extends State<RepoDetailPage>
   String? _error;
   bool _readmeLoading = false;
   String? _readmeError;
+  bool _repoOffline = false;
+  bool _readmeOffline = false;
   int _loadVersion = 0;
   int _issuesVersion = 0;
   int _pullRequestsVersion = 0;
@@ -84,15 +87,26 @@ class _RepoDetailPageState extends State<RepoDetailPage>
       _readme = null;
       _readmeError = null;
       _readmeLoading = false;
+      _repoOffline = false;
+      _readmeOffline = false;
       _topics = [];
       _branches = [];
     });
     try {
       final repo = await GiteeApi.getRepoDetail(widget.owner, widget.repo);
+      unawaited(OfflineCache.write(
+        key: OfflineCache.key(
+          token: GiteeApi.token,
+          type: 'repo',
+          parts: [widget.owner, widget.repo],
+        ),
+        value: repo.toJson(),
+      ));
       if (!mounted || loadVersion != _loadVersion) return;
       final initialBranch = _branch.isNotEmpty ? _branch : repo.defaultBranch;
       setState(() {
         _repo = repo;
+        _repoOffline = false;
         _branch = initialBranch;
         _loading = false;
       });
@@ -101,6 +115,29 @@ class _RepoDetailPageState extends State<RepoDetailPage>
       }
       unawaited(_loadSupplementaryData(repo, loadVersion));
     } catch (e) {
+      final cached = await OfflineCache.read(OfflineCache.key(
+        token: GiteeApi.token,
+        type: 'repo',
+        parts: [widget.owner, widget.repo],
+      ));
+      final value = cached?.value;
+      if (value is Map) {
+        final repo = Repo.fromJson(Map<String, dynamic>.from(value));
+        if (!mounted || loadVersion != _loadVersion) return;
+        final initialBranch = _branch.isNotEmpty ? _branch : repo.defaultBranch;
+        setState(() {
+          _repo = repo;
+          _repoOffline = true;
+          _branch = initialBranch;
+          _loading = false;
+          _error = null;
+        });
+        if (mounted) {
+          AppSettingsScope.of(context).addRecentRepo(repo.fullName);
+        }
+        unawaited(_loadSupplementaryData(repo, loadVersion));
+        return;
+      }
       if (mounted && loadVersion == _loadVersion) {
         setState(() {
           _loading = false;
@@ -174,11 +211,39 @@ class _RepoDetailPageState extends State<RepoDetailPage>
         widget.repo,
         branch: branch,
       );
+      unawaited(OfflineCache.write(
+        key: OfflineCache.key(
+          token: GiteeApi.token,
+          type: 'readme',
+          parts: [widget.owner, widget.repo, branch],
+        ),
+        value: readme,
+      ));
       if (!mounted || loadVersion != _loadVersion || _branch != branch) return;
-      setState(() => _readme = readme);
+      setState(() {
+        _readme = readme;
+        _readmeOffline = false;
+      });
     } catch (_) {
-      if (!mounted || loadVersion != _loadVersion || _branch != branch) return;
-      setState(() => _readmeError = 'README 暂不可用');
+      final cached = await OfflineCache.read(OfflineCache.key(
+        token: GiteeApi.token,
+        type: 'readme',
+        parts: [widget.owner, widget.repo, branch],
+      ));
+      final value = cached?.value;
+      if (value is String &&
+          mounted &&
+          loadVersion == _loadVersion &&
+          _branch == branch) {
+        setState(() {
+          _readme = value;
+          _readmeOffline = true;
+        });
+      } else if (!mounted || loadVersion != _loadVersion || _branch != branch) {
+        return;
+      } else {
+        setState(() => _readmeError = 'README 暂不可用');
+      }
     } finally {
       if (mounted && loadVersion == _loadVersion && _branch == branch) {
         setState(() => _readmeLoading = false);
@@ -191,6 +256,7 @@ class _RepoDetailPageState extends State<RepoDetailPage>
     setState(() {
       _branch = branch;
       _readme = null;
+      _readmeOffline = false;
     });
     await _loadReadme(branch, loadVersion: _loadVersion);
   }
@@ -319,6 +385,11 @@ class _RepoDetailPageState extends State<RepoDetailPage>
       appBar: AppBar(
         title: Text(repo.fullName, overflow: TextOverflow.ellipsis),
         actions: [
+          if (_repoOffline || _readmeOffline)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Icon(Icons.cloud_off_outlined, size: 19),
+            ),
           IconButton(
             icon: Icon(
               _isStarred ? Icons.star : Icons.star_border,
@@ -592,7 +663,8 @@ class _OverviewTab extends StatelessWidget {
                   children: [
                     Hero(
                       tag: 'repo-avatar-${repo.fullName}',
-                      child: AppAvatar(url: repo.ownerAvatar, size: 48, radius: 10),
+                      child: AppAvatar(
+                          url: repo.ownerAvatar, size: 48, radius: 10),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

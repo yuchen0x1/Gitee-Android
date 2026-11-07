@@ -5,9 +5,14 @@ import '../providers/app_settings.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_surface.dart';
 import '../widgets/paged_list_view.dart';
+import '../widgets/pressable_scale.dart';
 import '../widgets/repo_card.dart';
 import 'create_repo_page.dart';
+import 'my_issues_page.dart';
 import 'repo_detail_page.dart';
+import 'starred_repos_page.dart';
+import 'subscriptions_page.dart';
+import 'following_page.dart';
 
 /// 我的仓库列表页（顶部支持最近浏览快捷横向列表）。
 class ReposPage extends StatefulWidget {
@@ -44,6 +49,64 @@ class _ReposPageState extends State<ReposPage> {
     );
   }
 
+  /// 仓库页顶部快捷入口：快速跟进 Issue / Star / 订阅 / 关注。
+  Widget _buildQuickEntries(BuildContext context) {
+    final entries = <(IconData, String, Widget Function())>[
+      (Icons.bug_report_outlined, '我的 Issue', () => const MyIssuesPage()),
+      (Icons.star_outline, '我的 Star', () => const StarredReposPage()),
+      (Icons.notifications_active_outlined, '我的订阅', () => const SubscriptionsPage()),
+      (Icons.favorite_outline, '我的关注', () => const FollowingPage()),
+    ];
+    return SizedBox(
+      height: 76,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+        itemCount: entries.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, index) {
+          final (icon, label, page) = entries[index];
+          return PressableScale(
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => page())),
+            child: Container(
+              width: 96,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primaryRed.withValues(alpha: 0.10),
+                    AppColors.primaryLight.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.primaryRed.withValues(alpha: 0.18),
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: AppColors.primaryRed, size: 22),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = AppSettingsScope.of(context);
@@ -62,6 +125,7 @@ class _ReposPageState extends State<ReposPage> {
       ),
       body: Column(
         children: [
+          _buildQuickEntries(context),
           if (recents.isNotEmpty)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 4, 16, 10),

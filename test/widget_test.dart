@@ -31,7 +31,7 @@ void main() {
       Brightness.light,
     );
 
-    await settings.setDarkMode(true);
+    await settings.setThemeMode(AppThemeMode.dark);
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(

@@ -57,6 +57,8 @@ class _GistListPageState extends State<GistListPage> {
         emptyIcon: Icons.code_outlined,
         emptyTitle: '还没有代码片段',
         emptySubtitle: '点右下角按钮创建你的第一个 Gist',
+        emptyActionLabel: '创建代码片段',
+        emptyOnAction: _createGist,
         itemBuilder: (context, gist) => Card(
           margin: const EdgeInsets.only(bottom: 12),
           child: ListTile(

@@ -17,6 +17,16 @@ class RepoFile {
     this.sha,
   });
 
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'path': path,
+        'type': type,
+        'size': size,
+        'content': content,
+        'download_url': downloadUrl,
+        'sha': sha,
+      };
+
   factory RepoFile.fromJson(Map<String, dynamic> json) {
     return RepoFile(
       name: json['name'] ?? '',

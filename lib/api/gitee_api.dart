@@ -38,6 +38,8 @@ class GiteeApi {
 
   static String? get token => _client.token;
 
+  static void clearCache() => _client.clearCache();
+
   /// 测试用：注入替换传输层（如 MockClient）。
   static void setClientForTest(ApiClient client) => _client = client;
 

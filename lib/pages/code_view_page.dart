@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../utils/error_message.dart';
 import 'package:flutter/services.dart';
@@ -5,6 +7,7 @@ import 'dart:convert';
 import 'package:highlight/highlight.dart';
 import '../api/gitee_api.dart';
 import '../api/api_client.dart';
+import '../services/offline_cache.dart';
 import '../theme/app_theme.dart';
 import '../theme/code_theme.dart';
 import '../widgets/skeleton_list.dart';
@@ -51,6 +54,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
   bool _showLineNumbers = true;
   double _fontSize = 13.0;
   String _sha = '';
+  bool _offline = false;
 
   String get _branch {
     final value = widget.branch;
@@ -157,15 +161,38 @@ class _CodeViewPageState extends State<CodeViewPage> {
         widget.path,
         branch: _branch == 'master' ? null : _branch,
       );
+      unawaited(OfflineCache.write(
+        key: OfflineCache.key(
+          token: GiteeApi.token,
+          type: 'file',
+          parts: [widget.owner, widget.repo, widget.path, _branch],
+        ),
+        value: {'content': result.content, 'sha': result.sha},
+      ));
       if (!mounted) return;
       setState(() {
         _content = result.content;
         _sha = result.sha;
+        _offline = false;
         _loading = false;
         _error = null;
       });
     } catch (e) {
-      if (mounted) {
+      final cached = await OfflineCache.read(OfflineCache.key(
+        token: GiteeApi.token,
+        type: 'file',
+        parts: [widget.owner, widget.repo, widget.path, _branch],
+      ));
+      final value = cached?.value;
+      if (value is Map && value['content'] is String && mounted) {
+        setState(() {
+          _content = value['content'] as String;
+          _sha = value['sha']?.toString() ?? '';
+          _offline = true;
+          _loading = false;
+          _error = null;
+        });
+      } else if (mounted) {
         setState(() {
           _loading = false;
           _error = friendlyError(e);
@@ -278,8 +305,13 @@ class _CodeViewPageState extends State<CodeViewPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.fileName, overflow: TextOverflow.ellipsis),
+        title: _buildPathTitle(context),
         actions: [
+          if (_offline)
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: Icon(Icons.cloud_off_outlined, size: 19),
+            ),
           if (!_isImage && _content != null) ...[
             IconButton(
               icon: Icon(_showLineNumbers
@@ -312,8 +344,10 @@ class _CodeViewPageState extends State<CodeViewPage> {
                 }
               },
               itemBuilder: (_) => [
-                const PopupMenuItem(value: 'font_larger', child: Text('放大字体 (A+)')),
-                const PopupMenuItem(value: 'font_smaller', child: Text('缩小字体 (A-)')),
+                const PopupMenuItem(
+                    value: 'font_larger', child: Text('放大字体 (A+)')),
+                const PopupMenuItem(
+                    value: 'font_smaller', child: Text('缩小字体 (A-)')),
                 const PopupMenuDivider(),
                 const PopupMenuItem(value: 'edit', child: Text('编辑文件')),
                 const PopupMenuItem(value: 'delete', child: Text('删除文件')),
@@ -323,6 +357,56 @@ class _CodeViewPageState extends State<CodeViewPage> {
         ],
       ),
       body: _isImage ? _buildImageView() : _buildCodeView(),
+    );
+  }
+
+  /// 标题区面包屑：显示完整相对路径，末段（文件名）加粗高亮。
+  Widget _buildPathTitle(BuildContext context) {
+    final theme = Theme.of(context);
+    final segments = widget.path.split('/').where((e) => e.isNotEmpty).toList();
+    if (segments.isEmpty) {
+      return Text(widget.fileName, overflow: TextOverflow.ellipsis);
+    }
+    final fileName = segments.last;
+    final dirs = segments.sublist(0, segments.length - 1);
+    final titleColor =
+        theme.appBarTheme.titleTextStyle?.color ?? theme.colorScheme.onSurface;
+    if (dirs.isEmpty) {
+      return Text(fileName,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium
+              ?.copyWith(fontWeight: FontWeight.w700, color: titleColor));
+    }
+    // 前缀目录 + 文件名，文件名固定在最右
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            reverse: true,
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              for (var i = 0; i < dirs.length; i++) ...[
+                Text(dirs[i],
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(color: theme.textTheme.bodySmall?.color)),
+                _crumbSeparator(),
+              ],
+            ]),
+          ),
+        ),
+        Text(fileName,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.titleMedium
+                ?.copyWith(fontWeight: FontWeight.w700, color: titleColor)),
+      ],
+    );
+  }
+
+  Widget _crumbSeparator() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(Icons.chevron_right, size: 14, color: AppColors.textTertiary),
     );
   }
 
@@ -386,11 +470,11 @@ class _CodeViewPageState extends State<CodeViewPage> {
       fontFamily: 'monospace',
       fontSize: _fontSize,
       height: 1.6,
-      color: theme.brightness == Brightness.dark
-          ? Colors.white38
-          : Colors.black38,
+      color:
+          theme.brightness == Brightness.dark ? Colors.white38 : Colors.black38,
     );
-    final lineNumbersText = List.generate(lineCount, (i) => '${i + 1}').join('\n');
+    final lineNumbersText =
+        List.generate(lineCount, (i) => '${i + 1}').join('\n');
 
     final code = SelectableText.rich(_highlightCode(textStyle));
 

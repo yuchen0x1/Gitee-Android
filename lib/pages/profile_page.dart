@@ -5,6 +5,7 @@ import '../auth/auth_store.dart';
 import '../api/gitee_api.dart';
 import '../models/user.dart';
 import '../providers/app_settings.dart';
+import '../services/offline_cache.dart';
 import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
@@ -54,6 +55,52 @@ class _ProfilePageState extends State<ProfilePage> {
     }
     await AppLock.setEnabled(value);
     if (mounted) setState(() {});
+  }
+
+  String _themeModeLabel(AppThemeMode mode) {
+    return switch (mode) {
+      AppThemeMode.system => '跟随系统',
+      AppThemeMode.light => '浅色',
+      AppThemeMode.dark => '深色',
+    };
+  }
+
+  void _showThemeModePicker() {
+    final settings = AppSettingsScope.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('主题模式',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            ),
+            for (final mode in AppThemeMode.values)
+              ListTile(
+                leading: Icon(
+                  switch (mode) {
+                    AppThemeMode.system => Icons.brightness_auto,
+                    AppThemeMode.light => Icons.light_mode_outlined,
+                    AppThemeMode.dark => Icons.dark_mode_outlined,
+                  },
+                  color: AppColors.primaryRed,
+                ),
+                title: Text(_themeModeLabel(mode)),
+                trailing: settings.themeMode == mode
+                    ? const Icon(Icons.check, color: AppColors.primaryRed)
+                    : null,
+                onTap: () {
+                  settings.setThemeMode(mode);
+                  Navigator.of(context).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _checkForUpdate() async {
@@ -119,14 +166,15 @@ class _ProfilePageState extends State<ProfilePage> {
                             type: MaterialType.transparency,
                             child: Column(
                               children: [
-                                SwitchListTile(
-                                  secondary: const Icon(
-                                      Icons.dark_mode_outlined,
+                                ListTile(
+                                  leading: const Icon(Icons.dark_mode_outlined,
                                       color: AppColors.primaryRed),
                                   title: const Text('深色模式'),
-                                  value: settings.darkMode,
-                                  onChanged: (value) =>
-                                      settings.setDarkMode(value),
+                                  subtitle:
+                                      Text(_themeModeLabel(settings.themeMode)),
+                                  trailing: const Icon(Icons.chevron_right,
+                                      color: AppColors.textTertiary),
+                                  onTap: _showThemeModePicker,
                                 ),
                                 const Divider(),
                                 SwitchListTile(
@@ -242,7 +290,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       color: AppColors.textTertiary),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
-                                        builder: (_) => const AppChangelogPage()),
+                                        builder: (_) =>
+                                            const AppChangelogPage()),
                                   ),
                                 ),
                                 const Divider(),
@@ -302,7 +351,8 @@ class _ProfilePageState extends State<ProfilePage> {
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2.5),
+              border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.9), width: 2.5),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primaryLight.withValues(alpha: 0.4),
@@ -332,7 +382,10 @@ class _ProfilePageState extends State<ProfilePage> {
               border: Border.all(color: Colors.white24, width: 0.8),
             ),
             child: Text('@${user.login}',
-                style: const TextStyle(fontSize: 13, color: Colors.white70, fontFamily: 'monospace')),
+                style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                    fontFamily: 'monospace')),
           ),
           if (user.bio.isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -462,11 +515,14 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _clearCache() {
+  Future<void> _clearCache() async {
     PaintingBinding.instance.imageCache.clear();
     PaintingBinding.instance.imageCache.clearLiveImages();
+    GiteeApi.clearCache();
+    await OfflineCache.clear();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('图片缓存已清除')),
+      const SnackBar(content: Text('图片与离线阅读缓存已清除')),
     );
   }
 
@@ -614,7 +670,8 @@ class _StatItem extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
-                  color: isDark ? const Color(0xFF79C0FF) : AppColors.primaryRed,
+                  color:
+                      isDark ? const Color(0xFF79C0FF) : AppColors.primaryRed,
                   letterSpacing: -0.5,
                 ),
               ),
@@ -623,7 +680,8 @@ class _StatItem extends StatelessWidget {
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
                   fontWeight: FontWeight.w600,
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.8),
+                  color:
+                      theme.textTheme.bodySmall?.color?.withValues(alpha: 0.8),
                 ),
               ),
             ],
