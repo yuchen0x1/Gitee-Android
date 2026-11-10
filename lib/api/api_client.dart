@@ -39,6 +39,18 @@ class ApiClient {
 
   void clearCache() => _ttlCache.clear();
 
+  /// Invalidates cached resources on the same API path hierarchy as a write.
+  /// Unrelated cached resources remain available, avoiding a global cache flush.
+  void invalidateCacheForPath(String path) {
+    final normalizedPath = normalizeApiPath(path);
+    _ttlCache.removeWhere((key, _) {
+      final cachedPath = key.split('?').first;
+      return cachedPath == normalizedPath ||
+          cachedPath.startsWith('$normalizedPath/') ||
+          normalizedPath.startsWith('$cachedPath/');
+    });
+  }
+
   Map<String, String> headers({bool formEncoded = false}) {
     final headers = <String, String>{
       'Accept': 'application/json',
@@ -157,7 +169,11 @@ class ApiClient {
         default:
           throw StateError('Unsupported HTTP method: $normalizedMethod');
       }
-      return _handleResponse(res);
+      final result = _handleResponse(res);
+      if (normalizedMethod != 'GET') {
+        invalidateCacheForPath(path);
+      }
+      return result;
     } on TimeoutException {
       throw GiteeApiException('请求超时，请稍后重试');
     } on GiteeApiException {
@@ -173,8 +189,13 @@ class ApiClient {
     Map<String, String>? query,
     Duration ttl = const Duration(seconds: 30),
   }) async {
-    final key =
-        '$path?${query?.entries.map((e) => '${e.key}=${e.value}').join('&')}';
+    final normalizedQuery = query == null
+        ? ''
+        : (query.entries.toList()
+              ..sort((a, b) => a.key.compareTo(b.key)))
+            .map((e) => '${e.key}=${e.value}')
+            .join('&');
+    final key = '$path?$normalizedQuery';
     final hit = _ttlCache[key];
     if (hit != null && DateTime.now().difference(hit.at) < ttl) {
       return hit.data;
@@ -210,7 +231,9 @@ class ApiClient {
           .timeout(const Duration(seconds: 60));
       final res = await http.Response.fromStream(streamed)
           .timeout(const Duration(seconds: 60));
-      return _handleResponse(res);
+      final result = _handleResponse(res);
+      invalidateCacheForPath(path);
+      return result;
     } on TimeoutException {
       throw GiteeApiException('请求超时，请稍后重试');
     } on GiteeApiException {

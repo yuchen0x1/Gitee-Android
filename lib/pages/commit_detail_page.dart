@@ -219,7 +219,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(commit.author?.login ?? '未知作者',
+                              Text(commit.authorLabel,
                                   style:
                                       Theme.of(context).textTheme.titleMedium),
                               Text(formatDate(commit.date),
@@ -236,7 +236,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                       children: [
                         _DiffStat(
                             label: '共 ${commit.totalChanges} 处变更',
-                            color: AppColors.textSecondary),
+                            color: context.secondaryForeground),
                         const SizedBox(width: 12),
                         _DiffStat(
                             label: '+${commit.additions}',
@@ -267,8 +267,10 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                             ? (Icons.pending_outlined, AppColors.starColor)
                             : run.isFailure
                                 ? (Icons.error_outline, AppColors.primaryRed)
-                                : (Icons.check_circle_outline,
-                                    AppColors.success);
+                                : (
+                                    Icons.check_circle_outline,
+                                    AppColors.success
+                                  );
                         return ListTile(
                           dense: true,
                           contentPadding: EdgeInsets.zero,
@@ -314,8 +316,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                             child: CircularProgressIndicator(strokeWidth: 2)),
                       )
                     else if (_comments.isEmpty)
-                      Text('暂无评论',
-                          style: Theme.of(context).textTheme.bodySmall)
+                      Text('暂无评论', style: Theme.of(context).textTheme.bodySmall)
                     else
                       ..._comments.map(
                         (comment) => Padding(
@@ -351,8 +352,7 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                                         const Spacer(),
                                         IconButton(
                                           tooltip: '删除评论',
-                                          icon: const Icon(
-                                              Icons.delete_outline,
+                                          icon: const Icon(Icons.delete_outline,
                                               size: 18),
                                           onPressed: () =>
                                               _deleteComment(comment),
@@ -384,14 +384,13 @@ class _CommitDetailPageState extends State<CommitDetailPage> {
                         const SizedBox(width: 8),
                         IconButton.filled(
                           tooltip: '发送评论',
-                          onPressed:
-                              _commentSubmitting ? null : _submitComment,
+                          onPressed: _commentSubmitting ? null : _submitComment,
                           icon: _commentSubmitting
                               ? const SizedBox(
                                   width: 16,
                                   height: 16,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2),
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
                                 )
                               : const Icon(Icons.send, size: 18),
                         ),
@@ -442,7 +441,7 @@ class _FileChangeTile extends StatelessWidget {
               : Icons.description_outlined,
           color: file.status == 'added'
               ? AppColors.success
-              : AppColors.textSecondary,
+              : context.secondaryForeground,
         ),
         title: Text(file.filename,
             maxLines: 2,
@@ -464,8 +463,7 @@ class _FileChangeTile extends StatelessWidget {
             ],
           ),
         ),
-        trailing:
-            const Icon(Icons.chevron_right, color: AppColors.textTertiary),
+        trailing: Icon(Icons.chevron_right, color: context.mutedForeground),
         onTap: onTap,
       ),
     );

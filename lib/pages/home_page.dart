@@ -291,10 +291,10 @@ class _DesktopNavRail extends StatelessWidget {
                   color: AppColors.primaryRed,
                 ),
                 unselectedIconTheme:
-                    const IconThemeData(color: AppColors.textTertiary),
-                unselectedLabelTextStyle: const TextStyle(
+                    IconThemeData(color: context.mutedForeground),
+                unselectedLabelTextStyle: TextStyle(
                   fontSize: 12,
-                  color: AppColors.textTertiary,
+                  color: context.mutedForeground,
                 ),
                 destinations: [
                   NavigationRailDestination(

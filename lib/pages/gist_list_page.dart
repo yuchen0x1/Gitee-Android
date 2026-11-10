@@ -66,7 +66,7 @@ class _GistListPageState extends State<GistListPage> {
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             leading: Icon(
               gist.isPublic ? Icons.public_outlined : Icons.lock_outline,
-              color: gist.isPublic ? AppColors.success : AppColors.textTertiary,
+              color: gist.isPublic ? AppColors.success : context.mutedForeground,
             ),
             title: Text(
               gist.description.isEmpty

@@ -729,13 +729,13 @@ class _OverviewTab extends StatelessWidget {
                     _StatBadge(
                       icon: Icons.call_split,
                       value: repo.forks,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryForeground,
                     ),
                     const SizedBox(width: 20),
                     _StatBadge(
                       icon: Icons.visibility_outlined,
                       value: repo.watchers,
-                      color: AppColors.textSecondary,
+                      color: context.secondaryForeground,
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => RepoSubscribersPage(
@@ -831,12 +831,12 @@ class _OverviewTab extends StatelessWidget {
                     ),
                   )
                 else if (readme == null || readme!.trim().isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Text(
                         '暂无 README',
-                        style: TextStyle(color: AppColors.textTertiary),
+                        style: TextStyle(color: context.mutedForeground),
                       ),
                     ),
                   )
@@ -927,7 +927,7 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: iconColor ?? AppColors.textTertiary),
+          Icon(icon, size: 16, color: iconColor ?? context.mutedForeground),
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: theme.textTheme.bodySmall)),
         ],
@@ -1083,7 +1083,7 @@ class _FilesTabState extends State<_FilesTab> {
                 file.type == 'dir' ? Icons.folder : Icons.insert_drive_file,
                 color: file.type == 'dir'
                     ? AppColors.folderIcon
-                    : AppColors.textSecondary,
+                    : context.secondaryForeground,
                 size: 28,
               ),
               title: Text(
@@ -1095,9 +1095,9 @@ class _FilesTabState extends State<_FilesTab> {
               subtitle: file.type == 'file' && file.size != null
                   ? Text(_formatSize(file.size!))
                   : null,
-              trailing: const Icon(
+              trailing: Icon(
                 Icons.chevron_right,
-                color: AppColors.textTertiary,
+                color: context.mutedForeground,
               ),
               onTap: () => _openFile(file),
             ),

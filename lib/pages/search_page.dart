@@ -488,7 +488,7 @@ class _IssueSearchTile extends StatelessWidget {
                 Icon(issue.state == 'open' ? Icons.radio_button_checked : Icons.check_circle_outline,
                     color: issue.state == 'open'
                         ? AppColors.success
-                        : AppColors.textTertiary),
+                        : context.mutedForeground),
             title: Text(issue.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

@@ -1845,19 +1845,19 @@ class GiteeApi {
     return _asList(data).map((e) => Issue.fromJson(_asMap(e))).toList();
   }
 
+  /// 获取当前用户的仓库订阅（watch）列表。
+  ///
+  /// 注意：Gitee Open API v5 的 `/user/subscriptions` 不接受 `sort` /
+  /// `direction` 参数，带上会直接返回 400，因此这里只传分页参数。
   static Future<List<Repo>> getSubscriptions({
     int page = 1,
     int perPage = 20,
-    String sort = 'updated',
-    String direction = 'desc',
   }) async {
     final data = await _request(
       'GET',
       '/user/subscriptions',
       query: {
         ..._paging(page, perPage),
-        'sort': sort,
-        'direction': direction,
       },
     );
     return _asList(data).map((e) => Repo.fromJson(_asMap(e))).toList();
@@ -2301,7 +2301,8 @@ class GiteeApi {
     int id,
   ) async {
     if (GiteeApi.token == null) throw GiteeApiException('请先登录');
-    await _request('DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/milestones/$id');
+    await _request(
+        'DELETE', '/repos/${_enc(owner)}/${_enc(repo)}/milestones/$id');
   }
 
   // ---------- 模板与命名空间 ----------
@@ -2422,8 +2423,7 @@ class GiteeApi {
       '/gists',
       body: {
         'files': {
-          for (final e in files.entries)
-            e.key: {'content': e.value},
+          for (final e in files.entries) e.key: {'content': e.value},
         },
         if (description != null && description.isNotEmpty)
           'description': description,

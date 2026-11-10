@@ -226,8 +226,8 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                const Icon(Icons.folder_outlined,
-                    size: 16, color: AppColors.textTertiary),
+                Icon(Icons.folder_outlined,
+                    size: 16, color: context.mutedForeground),
                 const SizedBox(width: 6),
                 Expanded(child: _buildBreadcrumb()),
               ],
@@ -271,7 +271,7 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
                 file.type == 'dir' ? Icons.folder : Icons.insert_drive_file,
                 color: file.type == 'dir'
                     ? AppColors.folderIcon
-                    : AppColors.textSecondary,
+                    : context.secondaryForeground,
                 size: 28,
               ),
               title:
@@ -279,8 +279,8 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
               subtitle: file.type == 'file' && file.size != null
                   ? Text(_formatSize(file.size!))
                   : null,
-              trailing: const Icon(Icons.chevron_right,
-                  color: AppColors.textTertiary),
+              trailing: Icon(Icons.chevron_right,
+                  color: context.mutedForeground),
               onTap: () =>
                   file.type == 'dir' ? _openDir(file) : _openFile(file),
             ),
@@ -314,9 +314,9 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
   }
 
   Widget _crumbSeparator() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(Icons.chevron_right, size: 14, color: AppColors.textTertiary),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(Icons.chevron_right, size: 14, color: context.mutedForeground),
     );
   }
 

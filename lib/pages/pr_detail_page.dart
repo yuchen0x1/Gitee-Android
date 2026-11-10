@@ -442,10 +442,10 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
                                   issue.title,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
-                                  style:
-                                      Theme.of(context).textTheme.bodyMedium,
+                                  style: Theme.of(context).textTheme.bodyMedium,
                                 ),
-                                subtitle: Text('Issue #${issue.number} · ${issue.state}',
+                                subtitle: Text(
+                                    'Issue #${issue.number} · ${issue.state}',
                                     style:
                                         Theme.of(context).textTheme.bodySmall),
                                 trailing:
@@ -794,7 +794,7 @@ class _CommitTile extends StatelessWidget {
                       Text(sha, style: theme.textTheme.bodySmall),
                       const SizedBox(width: 10),
                       Text(
-                        commit.author?.login ?? '未知作者',
+                        commit.authorLabel,
                         style: theme.textTheme.bodySmall,
                       ),
                       const SizedBox(width: 10),

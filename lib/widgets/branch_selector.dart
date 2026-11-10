@@ -43,8 +43,8 @@ class BranchSelector extends StatelessWidget {
                 child: DropdownButton<String>(
                   value: branches.contains(branch) ? branch : branches.first,
                   isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down,
-                      color: AppColors.textTertiary),
+                  icon: Icon(Icons.arrow_drop_down,
+                      color: context.mutedForeground),
                   items: branches
                       .map(
                         (item) => DropdownMenuItem(

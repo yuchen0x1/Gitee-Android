@@ -10,7 +10,6 @@ import '../services/update_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
 import '../widgets/glass_surface.dart';
-import '../widgets/pressable_scale.dart';
 import '../widgets/skeleton_list.dart';
 import '../widgets/update_dialog.dart';
 import 'followers_page.dart';
@@ -172,8 +171,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   title: const Text('深色模式'),
                                   subtitle:
                                       Text(_themeModeLabel(settings.themeMode)),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: _showThemeModePicker,
                                 ),
                                 const Divider(),
@@ -200,8 +199,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   leading: const Icon(Icons.help_outline,
                                       color: AppColors.primaryRed),
                                   title: const Text('账号管理'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: _showAccountManager,
                                 ),
                                 const Divider(),
@@ -209,8 +208,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   leading: const Icon(Icons.code_outlined,
                                       color: AppColors.primaryRed),
                                   title: const Text('代码片段'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                         builder: (_) => const GistListPage()),
@@ -221,8 +220,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   leading: const Icon(Icons.vpn_key_outlined,
                                       color: AppColors.primaryRed),
                                   title: const Text('SSH 公钥'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                         builder: (_) => const SshKeysPage()),
@@ -233,8 +232,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   leading: const Icon(Icons.smart_toy_outlined,
                                       color: AppColors.primaryRed),
                                   title: const Text('AI 设置'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                         builder: (_) => const AiSettingsPage()),
@@ -256,8 +255,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   leading: const Icon(Icons.help_outline,
                                       color: AppColors.primaryRed),
                                   title: const Text('使用指南'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: _openDemo,
                                 ),
                                 const Divider(),
@@ -266,8 +265,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       Icons.cleaning_services_outlined,
                                       color: AppColors.primaryRed),
                                   title: const Text('清除缓存'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: _clearCache,
                                 ),
                                 const Divider(),
@@ -276,8 +275,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       color: AppColors.primaryRed),
                                   title: const Text('检查更新'),
                                   subtitle: const Text('从官方发布页获取最新版本'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: _checkForUpdate,
                                 ),
                                 const Divider(),
@@ -286,8 +285,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                       color: AppColors.primaryRed),
                                   title: const Text('更新日志'),
                                   subtitle: const Text('查看各版本的功能与修复'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: () => Navigator.of(context).push(
                                     MaterialPageRoute(
                                         builder: (_) =>
@@ -299,8 +298,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                   leading: const Icon(Icons.info_outline,
                                       color: AppColors.primaryRed),
                                   title: const Text('关于'),
-                                  trailing: const Icon(Icons.chevron_right,
-                                      color: AppColors.textTertiary),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
                                   onTap: _showAbout,
                                 ),
                               ],
@@ -444,36 +443,52 @@ class _ProfilePageState extends State<ProfilePage> {
           label: '我的组织',
           onTap: _openOrganizations),
     ];
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.8,
-      children: items.map((item) {
-        return PressableScale(
-          onTap: item.onTap,
-          child: GlassSurface(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: item.onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Row(
-                  children: [
-                    Icon(item.icon, color: AppColors.primaryRed, size: 24),
-                    const SizedBox(width: 10),
-                    Expanded(
-                        child: Text(item.label,
-                            style: Theme.of(context).textTheme.titleMedium)),
-                  ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = (constraints.maxWidth / 160).floor().clamp(1, 4);
+        final scale = MediaQuery.textScalerOf(context).scale(1);
+        final itemExtent = (56 * scale).clamp(56.0, 144.0).toDouble();
+        return GridView.builder(
+          itemCount: items.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisExtent: itemExtent,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+          ),
+          itemBuilder: (context, index) {
+            final item = items[index];
+            return GlassSurface(
+              child: Material(
+                type: MaterialType.transparency,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: item.onTap,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      children: [
+                        Icon(item.icon, color: AppColors.primaryRed, size: 24),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            item.label,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
-      }).toList(),
+      },
     );
   }
 

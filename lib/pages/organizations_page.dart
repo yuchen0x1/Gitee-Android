@@ -99,8 +99,8 @@ class _OrganizationsPageState extends State<OrganizationsPage> {
                 overflow: TextOverflow.ellipsis,
               ),
               isThreeLine: true,
-              trailing: const Icon(Icons.chevron_right,
-                  color: AppColors.textTertiary),
+              trailing: Icon(Icons.chevron_right,
+                  color: context.mutedForeground),
               onTap: () async {
                 await Navigator.of(context).push(
                   MaterialPageRoute(

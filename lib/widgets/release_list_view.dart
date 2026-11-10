@@ -73,10 +73,10 @@ class _ReleaseCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall),
               ],
-              if (release.body.trim().isNotEmpty) ...[
+              if (_plainSummary(release.body).isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  release.body.trim(),
+                  _plainSummary(release.body),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium,
@@ -85,8 +85,8 @@ class _ReleaseCard extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.arrow_forward,
-                      size: 16, color: AppColors.textTertiary),
+                  Icon(Icons.arrow_forward,
+                      size: 16, color: context.mutedForeground),
                   const SizedBox(width: 4),
                   Text('查看发布说明', style: theme.textTheme.bodySmall),
                 ],
@@ -97,4 +97,25 @@ class _ReleaseCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 把 Release 正文的 Markdown 粗略压成纯文本，供列表摘要预览使用。
+///
+/// 列表里没有渲染 Markdown 的能力，直接展示原文会暴露 `###`、`**` 等标记，
+/// 这里只做去标记处理，不追求完整解析（完整渲染在发布详情页）。
+String _plainSummary(String body) {
+  var text = body
+      .replaceAll(RegExp(r'!\[[^\]]*\]\([^)]*\)'), '') // 图片
+      .replaceAll(RegExp(r'\[([^\]]*)\]\([^)]*\)'), r'$1') // 链接保留文字
+      .replaceAll(RegExp(r'<[^>]+>'), '') // HTML 标签
+      .replaceAll(RegExp(r'^\s{0,3}#{1,6}\s*', multiLine: true), '') // 标题
+      .replaceAll(RegExp(r'^\s{0,3}>\s?', multiLine: true), '') // 引用
+      .replaceAll(
+          RegExp(r'^\s{0,3}([-*+]|\d+\.)\s+', multiLine: true), '') // 列表
+      .replaceAll(
+          RegExp(r'^\s{0,3}([-*_]\s*){3,}$', multiLine: true), '') // 分隔线
+      .replaceAll(RegExp(r'(\*\*|__|\*|_|~~|`)'), '') // 强调与行内代码
+      .replaceAll(RegExp(r'[ \t]+\n'), '\n') // 行尾空白
+      .replaceAll(RegExp(r'\n{2,}'), '\n'); // 压缩空行
+  return text.trim();
 }

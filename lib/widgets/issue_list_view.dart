@@ -92,8 +92,8 @@ class _IssueCard extends StatelessWidget {
                       style: theme.textTheme.bodySmall,
                     ),
                   ),
-                  const Icon(Icons.chat_bubble_outline,
-                      size: 16, color: AppColors.textTertiary),
+                  Icon(Icons.chat_bubble_outline,
+                      size: 16, color: context.mutedForeground),
                   const SizedBox(width: 4),
                   Text('${issue.comments}', style: theme.textTheme.bodySmall),
                 ],
@@ -143,7 +143,7 @@ class _LabelChip extends StatelessWidget {
     final clean = label.color.replaceAll('#', '');
     final value = int.tryParse(clean, radix: 16);
     final color =
-        value == null ? AppColors.textTertiary : Color(0xFF000000 | value);
+        value == null ? context.mutedForeground : Color(0xFF000000 | value);
     final dark = Theme.of(context).brightness == Brightness.dark;
     final textColor = dark ? Colors.black87 : Colors.white;
     return Container(

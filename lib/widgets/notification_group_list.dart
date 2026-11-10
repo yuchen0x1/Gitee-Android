@@ -130,7 +130,7 @@ class _RepoGroup extends StatelessWidget {
                         size: 16,
                         color: item.unread
                             ? AppColors.primaryRed
-                            : AppColors.textTertiary),
+                            : context.mutedForeground),
                   ),
                   title: Text(item.title,
                       maxLines: 1,

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../providers/app_settings.dart';
 import '../theme/app_theme.dart';
-import '../widgets/glass_surface.dart';
-import '../widgets/pressable_scale.dart';
 import 'login_page.dart';
 
 /// 首启引导页：展示核心功能亮点，最后一页进入登录。
@@ -25,19 +23,16 @@ class _OnboardingPageState extends State<OnboardingPage> {
       icon: Icons.dynamic_feed,
       title: '跟进动态',
       subtitle: '通勤路上刷通知、事件流和未读消息，随时掌握仓库动向。',
-      gradient: [AppColors.primaryLight, AppColors.primaryRed],
     ),
     _OnboardData(
       icon: Icons.code,
       title: '读写代码',
       subtitle: '浏览 README、源码与提交记录，语法高亮、离线看图，回 Issue、审 PR。',
-      gradient: [Color(0xFF5B8DEF), Color(0xFF3B5BDB)],
     ),
     _OnboardData(
       icon: Icons.shield_outlined,
       title: '安全私密',
       subtitle: '令牌存入系统安全存储，支持多账号切换与生物识别解锁。',
-      gradient: [Color(0xFF10B981), Color(0xFF0E9F6E)],
     ),
   ];
 
@@ -74,89 +69,69 @@ class _OnboardingPageState extends State<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.bgPage, Color(0xFFE8EEF6)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: TextButton(
-                    onPressed: _finish,
-                    child: const Text('跳过'),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: TextButton(
+                  onPressed: _finish,
+                  child: const Text('跳过'),
+                ),
+              ),
+            ),
+            Expanded(
+              child: PageView.builder(
+                controller: _controller,
+                itemCount: _pages.length,
+                onPageChanged: (i) => setState(() => _page = i),
+                itemBuilder: (context, index) =>
+                    _OnboardView(data: _pages[index]),
+              ),
+            ),
+            Semantics(
+              liveRegion: true,
+              label: '引导进度',
+              value: '第 ${_page + 1} 页，共 ${_pages.length} 页',
+              child: ExcludeSemantics(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_pages.length, (i) {
+                    final active = i == _page;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: active ? 22 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? AppColors.primaryRed
+                            : Theme.of(context).colorScheme.outlineVariant,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _next,
+                  icon: Icon(_page == _pages.length - 1
+                      ? Icons.login
+                      : Icons.arrow_forward),
+                  label: Text(
+                    _page == _pages.length - 1 ? '前往登录' : '继续',
                   ),
                 ),
               ),
-              Expanded(
-                child: PageView.builder(
-                  controller: _controller,
-                  itemCount: _pages.length,
-                  onPageChanged: (i) => setState(() => _page = i),
-                  itemBuilder: (context, index) =>
-                      _OnboardView(data: _pages[index]),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_pages.length, (i) {
-                  final active = i == _page;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: active ? 22 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.primaryRed
-                          : AppColors.textTertiary.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  );
-                }),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-                child: PressableScale(
-                  onTap: _next,
-                  child: Container(
-                    width: double.infinity,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [AppColors.primaryLight, AppColors.primaryRed],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.primaryRed.withValues(alpha: 0.35),
-                          blurRadius: 16,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        '立即开始',
-                        style: TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -167,13 +142,11 @@ class _OnboardData {
   final IconData icon;
   final String title;
   final String subtitle;
-  final List<Color> gradient;
 
   const _OnboardData({
     required this.icon,
     required this.title,
     required this.subtitle,
-    required this.gradient,
   });
 }
 
@@ -184,56 +157,57 @@ class _OnboardView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            GlassSurface(
-              padding: const EdgeInsets.all(0),
-              child: Container(
-                width: 132,
-                height: 132,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: data.gradient,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final iconExtent =
+                (constraints.maxHeight * 0.30).clamp(88.0, 124.0).toDouble();
+            final gap =
+                (constraints.maxHeight * 0.07).clamp(18.0, 28.0).toDouble();
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: iconExtent,
+                  height: iconExtent,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(28),
                   ),
-                  borderRadius: BorderRadius.circular(36),
-                  boxShadow: [
-                    BoxShadow(
-                      color: data.gradient.last.withValues(alpha: 0.4),
-                      blurRadius: 24,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  child: Icon(
+                    data.icon,
+                    size: iconExtent * 0.48,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
                 ),
-                child: Icon(data.icon, size: 60, color: Colors.white),
-              ),
-            ),
-            const SizedBox(height: 32),
-            Text(
-              data.title,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-                letterSpacing: -0.3,
-              ),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              data.subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 15,
-                height: 1.6,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
+                SizedBox(height: gap),
+                Text(
+                  data.title,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Text(
+                    data.subtitle,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontSize: 15,
+                      height: 1.55,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

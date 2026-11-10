@@ -737,10 +737,10 @@ class _IssueHeader extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Icon(
+                Icon(
                   Icons.chat_bubble_outline,
                   size: 18,
-                  color: AppColors.textTertiary,
+                  color: context.mutedForeground,
                 ),
                 const SizedBox(width: 4),
                 Text('${issue.comments}', style: theme.textTheme.bodySmall),

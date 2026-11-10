@@ -51,6 +51,12 @@ class AppColors {
   }
 }
 
+/// Theme-aware semantic foreground colors for supporting text and icons.
+extension AppThemeContext on BuildContext {
+  Color get mutedForeground => Theme.of(this).colorScheme.outline;
+  Color get secondaryForeground => Theme.of(this).colorScheme.onSurfaceVariant;
+}
+
 // ---------- 主题色映射 ----------
 
 class _Palette {
@@ -103,7 +109,7 @@ const _light = _Palette(
 
 const _dark = _Palette(
   scaffold: Color(0xFF0D1117), // GitHub / Cyberpunk 深空暗黑
-  card: Color(0xFF161B22),     // 科技感微高亮暗夜面板色
+  card: Color(0xFF161B22), // 科技感微高亮暗夜面板色
   foreground: Color(0xFFE6EDF3),
   titleColor: Color(0xFFF0F6FC),
   bodyColor: Color(0xFF8B949E),
@@ -249,8 +255,8 @@ ThemeData _buildTheme(Brightness brightness, _Palette p) {
       backgroundColor: p.card,
       surfaceTintColor: Colors.transparent,
     ),
-    bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: Colors.transparent,
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: p.card,
       surfaceTintColor: Colors.transparent,
       showDragHandle: true,
     ),

@@ -390,7 +390,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
                 Text(dirs[i],
                     style: theme.textTheme.titleSmall
                         ?.copyWith(color: theme.textTheme.bodySmall?.color)),
-                _crumbSeparator(),
+                _crumbSeparator(context),
               ],
             ]),
           ),
@@ -403,10 +403,10 @@ class _CodeViewPageState extends State<CodeViewPage> {
     );
   }
 
-  Widget _crumbSeparator() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(Icons.chevron_right, size: 14, color: AppColors.textTertiary),
+  Widget _crumbSeparator(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Icon(Icons.chevron_right, size: 14, color: context.mutedForeground),
     );
   }
 
@@ -433,13 +433,13 @@ class _CodeViewPageState extends State<CodeViewPage> {
             );
           },
           errorBuilder: (context, error, stackTrace) {
-            return const Column(
+            return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.broken_image_outlined,
-                    size: 56, color: AppColors.textTertiary),
-                SizedBox(height: 12),
-                Text('图片无法加载'),
+                    size: 56, color: context.mutedForeground),
+                const SizedBox(height: 12),
+                const Text('图片无法加载'),
               ],
             );
           },

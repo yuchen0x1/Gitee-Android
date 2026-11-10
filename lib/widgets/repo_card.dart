@@ -129,12 +129,12 @@ class RepoCard extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(_count(repo.stars), style: theme.textTheme.bodySmall),
                     const SizedBox(width: 16),
-                    const Icon(Icons.call_split,
-                        size: 16, color: AppColors.textTertiary),
+                    Icon(Icons.call_split,
+                        size: 16, color: context.mutedForeground),
                     const SizedBox(width: 3),
                     Text(_count(repo.forks), style: theme.textTheme.bodySmall),
                     const Spacer(),
-                    _buildUpdateTime(theme),
+                    _buildUpdateTime(context, theme),
                   ],
                 ),
               ],
@@ -145,7 +145,7 @@ class RepoCard extends StatelessWidget {
     );
   }
 
-  Widget _buildUpdateTime(ThemeData theme) {
+  Widget _buildUpdateTime(BuildContext context, ThemeData theme) {
     final updated = repo.updatedAt;
     if (updated.isEmpty) return const SizedBox.shrink();
     final time = DateTime.tryParse(updated)?.toLocal();
@@ -166,7 +166,7 @@ class RepoCard extends StatelessWidget {
     return Text(
       label,
       style: theme.textTheme.bodySmall?.copyWith(
-        color: stale ? AppColors.textTertiary : AppColors.textSecondary,
+        color: stale ? context.mutedForeground : context.secondaryForeground,
         fontWeight: stale ? FontWeight.w400 : FontWeight.w500,
       ),
     );

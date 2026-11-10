@@ -67,7 +67,7 @@ class _CommitCard extends StatelessWidget {
                   ],
                   Expanded(
                     child: Text(
-                      commit.author?.login ?? '未知作者',
+                      commit.authorLabel,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall,

@@ -512,7 +512,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                             : Icons.account_tree_outlined,
                         color: branch.protected
                             ? AppColors.success
-                            : AppColors.textTertiary,
+                            : context.mutedForeground,
                       ),
                       title: Text(branch.name),
                       subtitle: Text(
@@ -725,7 +725,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                                         : Icons.flag,
                                     color: milestone.state == 'open'
                                         ? AppColors.success
-                                        : AppColors.textTertiary,
+                                        : context.mutedForeground,
                                   ),
                                   title: Text(milestone.title),
                                   subtitle: Text(
