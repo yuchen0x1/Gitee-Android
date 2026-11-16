@@ -24,9 +24,13 @@ val requiredSigningProperties = listOf(
     "keyAlias",
     "storeFile",
 )
+val releaseKeystoreFile = keystoreProperties["storeFile"]
+    ?.toString()
+    ?.takeIf { it.isNotBlank() }
+    ?.let { file(it) }
 val hasCompleteReleaseSigning = hasReleaseKeystore &&
-    requiredSigningProperties.all { !keystoreProperties[it].toString().isNullOrBlank() } &&
-    rootProject.file(keystoreProperties["storeFile"]?.toString() ?: "").isFile
+    requiredSigningProperties.all { keystoreProperties.getProperty(it)?.isNotBlank() == true } &&
+    releaseKeystoreFile?.isFile == true
 if (releaseTaskRequested && !hasCompleteReleaseSigning) {
     throw GradleException(
         "Release 构建需要完整的 android/key.properties 和可读的 keystore；" +
@@ -55,11 +59,11 @@ android {
     }
 
     signingConfigs {
-        if (hasReleaseKeystore) {
+        if (hasCompleteReleaseSigning) {
             create("release") {
                 keyAlias = keystoreProperties["keyAlias"] as String
                 keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
+                storeFile = releaseKeystoreFile
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }
