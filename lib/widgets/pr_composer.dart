@@ -1,7 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/error_message.dart';
 import '../api/gitee_api.dart';
 import '../theme/app_theme.dart';
+import '../services/composer_draft.dart';
+import 'composer_draft_status.dart';
 
 /// Bottom sheet 表单，用于在仓库中创建 Pull Request。
 Future<bool> showCreatePullRequestSheet(
@@ -34,8 +37,36 @@ class _PullRequestComposerState extends State<_PullRequestComposer> {
   bool _submitting = false;
   String? _error;
 
+  late final ComposerDraft _draft;
+  late final String? _sessionToken;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionToken = GiteeApi.token;
+    _draft = ComposerDraft(
+        token: _sessionToken,
+        kind: 'pr',
+        owner: widget.owner,
+        repo: widget.repo,
+        fields: {
+          'title': _titleCtrl,
+          'body': _bodyCtrl,
+          'head': _headCtrl,
+          'base': _baseCtrl
+        });
+    _draft.addListener(_onDraftChanged);
+    unawaited(_draft.restore());
+  }
+
+  void _onDraftChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    _draft.removeListener(_onDraftChanged);
+    _draft.dispose();
     _titleCtrl.dispose();
     _headCtrl.dispose();
     _baseCtrl.dispose();
@@ -44,7 +75,11 @@ class _PullRequestComposerState extends State<_PullRequestComposer> {
   }
 
   Future<void> _submit() async {
-    if (_submitting) return;
+    if (_submitting || _draft.loading) return;
+    if (GiteeApi.token != _sessionToken) {
+      setState(() => _error = '账号已切换，请关闭表单后重新打开');
+      return;
+    }
     final title = _titleCtrl.text.trim();
     final head = _headCtrl.text.trim();
     final base = _baseCtrl.text.trim();
@@ -66,7 +101,14 @@ class _PullRequestComposerState extends State<_PullRequestComposer> {
         description:
             _bodyCtrl.text.trim().isEmpty ? null : _bodyCtrl.text.trim(),
       );
-      if (mounted) Navigator.of(context).pop(true);
+      await _draft.complete();
+      if (mounted) {
+        if (_draft.error != null) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(_draft.error!)));
+        }
+        Navigator.of(context).pop(true);
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -79,86 +121,99 @@ class _PullRequestComposerState extends State<_PullRequestComposer> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 12,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    if (_draft.loading) {
+      return const Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(heightFactor: 1, child: CircularProgressIndicator()));
+    }
+    return PopScope(
+        canPop: !_submitting,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 12,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('创建 Pull Request',
-                    style: Theme.of(context).textTheme.titleLarge),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                Row(
+                  children: [
+                    Expanded(
+                        child: Text('创建 Pull Request',
+                            style: Theme.of(context).textTheme.titleLarge)),
+                    IconButton(
+                      onPressed:
+                          _submitting ? null : () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                ComposerDraftStatus(draft: _draft, enabled: !_submitting),
+                TextField(
+                  controller: _titleCtrl,
+                  enabled: !_submitting,
+                  decoration: const InputDecoration(labelText: '标题 *'),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _headCtrl,
+                  enabled: !_submitting,
+                  decoration: const InputDecoration(
+                    labelText: '源分支 *',
+                    hintText: '如 feature/xxx 或 user/repo:branch',
+                  ),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _baseCtrl,
+                  enabled: !_submitting,
+                  decoration: const InputDecoration(
+                    labelText: '目标分支 *',
+                    hintText: '如 master',
+                  ),
+                  textInputAction: TextInputAction.next,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _bodyCtrl,
+                  enabled: !_submitting,
+                  decoration: const InputDecoration(
+                    labelText: '描述',
+                    alignLabelWithHint: true,
+                  ),
+                  maxLines: 4,
+                  maxLength: 5000,
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(_error!,
+                      style: const TextStyle(color: AppColors.primaryRed)),
+                ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _submitting ? null : _submit,
+                    icon: _submitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.send),
+                    label: Text(_submitting ? '提交中…' : '创建 PR'),
+                  ),
                 ),
               ],
             ),
-            TextField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: '标题 *'),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _headCtrl,
-              decoration: const InputDecoration(
-                labelText: '源分支 *',
-                hintText: '如 feature/xxx 或 user/repo:branch',
-              ),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _baseCtrl,
-              decoration: const InputDecoration(
-                labelText: '目标分支 *',
-                hintText: '如 master',
-              ),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _bodyCtrl,
-              decoration: const InputDecoration(
-                labelText: '描述',
-                alignLabelWithHint: true,
-              ),
-              maxLines: 4,
-              maxLength: 5000,
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!,
-                  style: const TextStyle(color: AppColors.primaryRed)),
-            ],
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _submitting ? null : _submit,
-                icon: _submitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white),
-                      )
-                    : const Icon(Icons.send),
-                label: Text(_submitting ? '提交中…' : '创建 PR'),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 }

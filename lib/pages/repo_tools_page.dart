@@ -8,7 +8,6 @@ import '../models/repo_traffic.dart';
 import '../models/user.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_image.dart';
-import '../widgets/state_views.dart';
 
 /// 仓库能力中心：把已封装的管理类官方 API 暴露为可操作页面。
 class RepoToolsPage extends StatefulWidget {
@@ -29,7 +28,9 @@ class RepoToolsPage extends StatefulWidget {
 
 class _RepoToolsPageState extends State<RepoToolsPage> {
   bool _loading = true;
-  String? _error;
+  final Map<String, String> _loadErrors = {};
+  int _loadGeneration = 0;
+  int _extrasGeneration = 0;
   List<RepositoryBranch> _branches = [];
   List<RepositoryTag> _tags = [];
   List<Repo> _forks = [];
@@ -51,88 +52,96 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
   void initState() {
     super.initState();
     _load();
-    _loadExtras();
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final results = await Future.wait<dynamic>([
-        GiteeApi.getBranchDetails(widget.owner, widget.repo, perPage: 100),
-        GiteeApi.getTags(widget.owner, widget.repo, perPage: 100),
-        GiteeApi.getForks(widget.owner, widget.repo, perPage: 20),
-        GiteeApi.getContributors(widget.owner, widget.repo),
-        GiteeApi.getWebhooks(widget.owner, widget.repo),
-        GiteeApi.getCollaborators(widget.owner, widget.repo),
-        GiteeApi.getLanguages(widget.owner, widget.repo),
-        GiteeApi.getRepoLicense(widget.owner, widget.repo),
-      ]);
-      if (!mounted) return;
-      setState(() {
-        _branches = results[0] as List<RepositoryBranch>;
-        _tags = results[1] as List<RepositoryTag>;
-        _forks = results[2] as List<Repo>;
-        _contributors = results[3] as List<Contributor>;
-        _webhooks = results[4] as List<Webhook>;
-        _collaborators = results[5] as List<User>;
-        _languages = results[6] as Map<String, dynamic>;
-        _license = results[7] as Map<String, dynamic>;
-        _loading = false;
-      });
-      _loadExtras();
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = friendlyError(e);
-        });
+    final generation = ++_loadGeneration;
+    setState(() => _loading = true);
+    _loadExtras();
+    Future<void> load<T>(String section, Future<T> Function() fetch,
+        void Function(T) apply) async {
+      try {
+        final value = await fetch();
+        if (!mounted || generation != _loadGeneration) return;
+        apply(value);
+        _loadErrors.remove(section);
+      } catch (e) {
+        if (mounted && generation == _loadGeneration) {
+          _loadErrors[section] = friendlyError(e);
+        }
       }
+    }
+
+    // A public repository's webhooks/collaborators may be forbidden and its
+    // license may be absent. These failures must not hide branches or statistics.
+    await Future.wait([
+      load(
+          '分支',
+          () => GiteeApi.getBranchDetails(widget.owner, widget.repo,
+              perPage: 100),
+          (value) => _branches = value),
+      load(
+          '标签',
+          () => GiteeApi.getTags(widget.owner, widget.repo, perPage: 100),
+          (value) => _tags = value),
+      load(
+          'Fork',
+          () => GiteeApi.getForks(widget.owner, widget.repo, perPage: 20),
+          (value) => _forks = value),
+      load('贡献者', () => GiteeApi.getContributors(widget.owner, widget.repo),
+          (value) => _contributors = value),
+      load('Webhook', () => GiteeApi.getWebhooks(widget.owner, widget.repo),
+          (value) => _webhooks = value),
+      load('协作者', () => GiteeApi.getCollaborators(widget.owner, widget.repo),
+          (value) => _collaborators = value),
+      load('语言统计', () => GiteeApi.getLanguages(widget.owner, widget.repo),
+          (value) => _languages = value),
+      load('许可证', () => GiteeApi.getRepoLicense(widget.owner, widget.repo),
+          (value) => _license = value),
+    ]);
+    if (mounted && generation == _loadGeneration) {
+      setState(() => _loading = false);
     }
   }
 
   /// 标签 / 里程碑 / 部署公钥各自独立加载，
   /// 某一项失败（如无权限）不影响其它区块。
   Future<void> _loadExtras() async {
-    Future<void> safe(Future<void> Function() job,
-        void Function(Object) onError) async {
+    final generation = ++_extrasGeneration;
+    Future<void> load<T>(Future<T> Function() fetch, void Function(T) apply,
+        void Function(String) reportError) async {
       try {
-        await job();
+        final value = await fetch();
+        if (mounted && generation == _extrasGeneration) {
+          setState(() => apply(value));
+        }
       } catch (e) {
-        onError(e);
+        if (mounted && generation == _extrasGeneration) {
+          setState(() => reportError(friendlyError(e)));
+        }
       }
     }
 
-    await safe(() async {
-      final labels = await GiteeApi.getRepoLabels(widget.owner, widget.repo);
-      if (mounted) setState(() => _labels = labels);
-    }, (e) {
-      if (mounted) setState(() => _labelsError = e.toString());
-    });
-    await safe(() async {
-      final milestones = await GiteeApi.getMilestones(
-        widget.owner,
-        widget.repo,
-        state: 'all',
-      );
-      if (mounted) setState(() => _milestones = milestones);
-    }, (e) {
-      if (mounted) setState(() => _milestonesError = e.toString());
-    });
-    await safe(() async {
-      final keys = await GiteeApi.getDeployKeys(widget.owner, widget.repo);
-      if (mounted) setState(() => _deployKeys = keys);
-    }, (e) {
-      if (mounted) setState(() => _deployKeysError = e.toString());
-    });
-    await safe(() async {
-      final traffic = await GiteeApi.getRepoTraffic(widget.owner, widget.repo);
-      if (mounted) setState(() => _traffic = traffic);
-    }, (e) {
-      if (mounted) setState(() => _trafficError = e.toString());
-    });
+    await Future.wait([
+      load(() => GiteeApi.getRepoLabels(widget.owner, widget.repo), (value) {
+        _labels = value;
+        _labelsError = null;
+      }, (error) => _labelsError = error),
+      load(
+          () => GiteeApi.getMilestones(widget.owner, widget.repo, state: 'all'),
+          (value) {
+        _milestones = value;
+        _milestonesError = null;
+      }, (error) => _milestonesError = error),
+      load(() => GiteeApi.getDeployKeys(widget.owner, widget.repo), (value) {
+        _deployKeys = value;
+        _deployKeysError = null;
+      }, (error) => _deployKeysError = error),
+      load(() => GiteeApi.getRepoTraffic(widget.owner, widget.repo), (value) {
+        _traffic = value;
+        _trafficError = null;
+      }, (error) => _trafficError = error),
+    ]);
   }
 
   /// 语言统计行；v5 现返回 {languages: [{language, percent, bytes}]} 包装结构，
@@ -471,17 +480,14 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    if (_error != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('仓库能力中心')),
-        body: ErrorState(message: _error!, onRetry: _load),
-      );
-    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('仓库能力中心'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
+          IconButton(
+              tooltip: '刷新仓库信息',
+              icon: const Icon(Icons.refresh),
+              onPressed: _load),
         ],
       ),
       body: RefreshIndicator(
@@ -493,6 +499,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
           children: [
             _section(
               title: '分支与标签',
+              loadKeys: const ['分支', '标签'],
               icon: Icons.alt_route,
               actions: [
                 IconButton(
@@ -543,13 +550,17 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                       subtitle: Text(tag.sha.isEmpty ? '标签' : tag.sha),
                     ),
                   ),
-                  if (_branches.isEmpty && _tags.isEmpty)
+                  if (_branches.isEmpty &&
+                      _tags.isEmpty &&
+                      !_loadErrors.containsKey('分支') &&
+                      !_loadErrors.containsKey('标签'))
                     const _InlineEmpty(text: '暂无分支或标签'),
                 ],
               ),
             ),
             _section(
               title: '代码统计',
+              loadKeys: const ['语言统计', '贡献者'],
               icon: Icons.insights_outlined,
               child: Column(
                 children: [
@@ -563,7 +574,10 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                           value: '${item.contributions} 次提交',
                         ),
                       ),
-                  if (_languageRows.isEmpty && _contributors.isEmpty)
+                  if (_languageRows.isEmpty &&
+                      _contributors.isEmpty &&
+                      !_loadErrors.containsKey('语言统计') &&
+                      !_loadErrors.containsKey('贡献者'))
                     const _InlineEmpty(text: '暂无统计数据'),
                 ],
               ),
@@ -575,27 +589,31 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
             ),
             _section(
               title: '许可证',
+              loadKeys: const ['许可证'],
               icon: Icons.gavel_outlined,
-              child: _license.isEmpty
-                  ? const _InlineEmpty(text: '暂无许可证信息')
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          (_license['license'] ??
-                                  _license['name'] ??
-                                  _license['spdx_id'] ??
-                                  '已配置许可证')
-                              .toString(),
-                          style: Theme.of(context).textTheme.titleMedium,
+              child: _license.isEmpty && _loadErrors.containsKey('许可证')
+                  ? const SizedBox.shrink()
+                  : _license.isEmpty
+                      ? const _InlineEmpty(text: '暂无许可证信息')
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              (_license['license'] ??
+                                      _license['name'] ??
+                                      _license['spdx_id'] ??
+                                      '已配置许可证')
+                                  .toString(),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            if (_license['html_url'] != null)
+                              Text(_license['html_url'].toString()),
+                          ],
                         ),
-                        if (_license['html_url'] != null)
-                          Text(_license['html_url'].toString()),
-                      ],
-                    ),
             ),
             _section(
               title: 'Fork (${_forks.length})',
+              loadKeys: const ['Fork'],
               icon: Icons.call_split,
               actions: [
                 IconButton(
@@ -604,32 +622,35 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                   icon: const Icon(Icons.add),
                 ),
               ],
-              child: _forks.isEmpty
-                  ? const _InlineEmpty(text: '暂无 Fork')
-                  : Column(
-                      children: _forks
-                          .take(10)
-                          .map(
-                            (repo) => ListTile(
-                              dense: true,
-                              leading: AppAvatar(
-                                url: repo.ownerAvatar,
-                                size: 32,
-                                radius: 8,
-                              ),
-                              title: Text(repo.fullName),
-                              subtitle: Text(
-                                repo.description,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
+              child: _forks.isEmpty && _loadErrors.containsKey('Fork')
+                  ? const SizedBox.shrink()
+                  : _forks.isEmpty
+                      ? const _InlineEmpty(text: '暂无 Fork')
+                      : Column(
+                          children: _forks
+                              .take(10)
+                              .map(
+                                (repo) => ListTile(
+                                  dense: true,
+                                  leading: AppAvatar(
+                                    url: repo.ownerAvatar,
+                                    size: 32,
+                                    radius: 8,
+                                  ),
+                                  title: Text(repo.fullName),
+                                  subtitle: Text(
+                                    repo.description,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
             ),
             _section(
               title: '协作者 (${_collaborators.length})',
+              loadKeys: const ['协作者'],
               icon: Icons.group_outlined,
               actions: [
                 IconButton(
@@ -638,28 +659,31 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                   icon: const Icon(Icons.person_add_alt_1),
                 ),
               ],
-              child: _collaborators.isEmpty
-                  ? const _InlineEmpty(text: '暂无协作者')
-                  : Column(
-                      children: _collaborators
-                          .map(
-                            (user) => ListTile(
-                              dense: true,
-                              leading: AppAvatar(
-                                url: user.avatarUrl,
-                                size: 32,
-                                radius: 8,
-                              ),
-                              title: Text(user.login),
-                              trailing: IconButton(
-                                tooltip: '移除',
-                                onPressed: () => _removeCollaborator(user),
-                                icon: const Icon(Icons.remove_circle_outline),
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
+              child: _collaborators.isEmpty && _loadErrors.containsKey('协作者')
+                  ? const SizedBox.shrink()
+                  : _collaborators.isEmpty
+                      ? const _InlineEmpty(text: '暂无协作者')
+                      : Column(
+                          children: _collaborators
+                              .map(
+                                (user) => ListTile(
+                                  dense: true,
+                                  leading: AppAvatar(
+                                    url: user.avatarUrl,
+                                    size: 32,
+                                    radius: 8,
+                                  ),
+                                  title: Text(user.login),
+                                  trailing: IconButton(
+                                    tooltip: '移除',
+                                    onPressed: () => _removeCollaborator(user),
+                                    icon:
+                                        const Icon(Icons.remove_circle_outline),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
             ),
             _section(
               title: '标签 (${_labels.length})',
@@ -672,32 +696,33 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                 ),
               ],
               child: _labelsError != null
-                  ? const _InlineEmpty(text: '加载失败：需要仓库管理权限')
+                  ? _InlineEmpty(text: '加载失败：$_labelsError')
                   : _labels.isEmpty
                       ? const _InlineEmpty(text: '暂无标签')
                       : Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: _labels
-                              .map(
-                                (label) {
-                                  final cleanColor = label.color.replaceAll('#', '');
-                                  final parsedColor = int.tryParse('FF$cleanColor', radix: 16);
-                                  final color = (cleanColor.isEmpty || parsedColor == null)
+                          children: _labels.map(
+                            (label) {
+                              final cleanColor =
+                                  label.color.replaceAll('#', '');
+                              final parsedColor =
+                                  int.tryParse('FF$cleanColor', radix: 16);
+                              final color =
+                                  (cleanColor.isEmpty || parsedColor == null)
                                       ? null
                                       : Color(parsedColor);
-                                  return InputChip(
-                                    label: Text(label.name),
-                                    backgroundColor: color,
-                                    labelStyle: TextStyle(
-                                      color: color == null ? null : Colors.white,
-                                    ),
-                                    onDeleted: () => _deleteLabel(label),
-                                    deleteIconColor: Colors.white70,
-                                  );
-                                },
-                              )
-                              .toList(),
+                              return InputChip(
+                                label: Text(label.name),
+                                backgroundColor: color,
+                                labelStyle: TextStyle(
+                                  color: color == null ? null : Colors.white,
+                                ),
+                                onDeleted: () => _deleteLabel(label),
+                                deleteIconColor: Colors.white70,
+                              );
+                            },
+                          ).toList(),
                         ),
             ),
             _section(
@@ -752,8 +777,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                                         tooltip: '删除',
                                         onPressed: () =>
                                             _deleteMilestone(milestone),
-                                        icon: const Icon(
-                                            Icons.delete_outline),
+                                        icon: const Icon(Icons.delete_outline),
                                       ),
                                     ],
                                   ),
@@ -791,8 +815,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                                   trailing: IconButton(
                                     tooltip: '删除',
                                     onPressed: () => _deleteDeployKey(key),
-                                    icon:
-                                        const Icon(Icons.delete_outline),
+                                    icon: const Icon(Icons.delete_outline),
                                   ),
                                 ),
                               )
@@ -801,6 +824,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
             ),
             _section(
               title: 'Webhook (${_webhooks.length})',
+              loadKeys: const ['Webhook'],
               icon: Icons.webhook_outlined,
               actions: [
                 IconButton(
@@ -809,44 +833,46 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
                   icon: const Icon(Icons.add),
                 ),
               ],
-              child: _webhooks.isEmpty
-                  ? const _InlineEmpty(text: '暂无 Webhook')
-                  : Column(
-                      children: _webhooks
-                          .map(
-                            (hook) => ListTile(
-                              dense: true,
-                              leading: const Icon(Icons.webhook),
-                              title: Text(
-                                hook.title.isEmpty ? hook.url : hook.title,
-                              ),
-                              subtitle: Text(
-                                hook.url,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: PopupMenuButton<String>(
-                                onSelected: (value) {
-                                  if (value == 'test') _testWebhook(hook);
-                                  if (value == 'delete') {
-                                    _deleteWebhook(hook);
-                                  }
-                                },
-                                itemBuilder: (_) => const [
-                                  PopupMenuItem(
-                                    value: 'test',
-                                    child: Text('测试'),
+              child: _webhooks.isEmpty && _loadErrors.containsKey('Webhook')
+                  ? const SizedBox.shrink()
+                  : _webhooks.isEmpty
+                      ? const _InlineEmpty(text: '暂无 Webhook')
+                      : Column(
+                          children: _webhooks
+                              .map(
+                                (hook) => ListTile(
+                                  dense: true,
+                                  leading: const Icon(Icons.webhook),
+                                  title: Text(
+                                    hook.title.isEmpty ? hook.url : hook.title,
                                   ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text('删除'),
+                                  subtitle: Text(
+                                    hook.url,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
+                                  trailing: PopupMenuButton<String>(
+                                    onSelected: (value) {
+                                      if (value == 'test') _testWebhook(hook);
+                                      if (value == 'delete') {
+                                        _deleteWebhook(hook);
+                                      }
+                                    },
+                                    itemBuilder: (_) => const [
+                                      PopupMenuItem(
+                                        value: 'test',
+                                        child: Text('测试'),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Text('删除'),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
             ),
           ],
         ),
@@ -885,8 +911,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
           const Divider(),
           ...recent.map((day) => _MetricRow(
                 label: '${day.date.month}/${day.date.day}',
-                value:
-                    '浏览 ${day.ip} · 拉取 ${day.pull} · 推送 ${day.push}',
+                value: '浏览 ${day.ip} · 拉取 ${day.pull} · 推送 ${day.push}',
               )),
         ],
         if (traffic.ip == 0 && traffic.pull == 0 && traffic.push == 0)
@@ -900,6 +925,7 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
     required IconData icon,
     required Widget child,
     List<Widget> actions = const [],
+    List<String> loadKeys = const [],
   }) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -922,6 +948,17 @@ class _RepoToolsPageState extends State<RepoToolsPage> {
               ],
             ),
             const Divider(),
+            if (loadKeys.any(_loadErrors.containsKey))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  loadKeys
+                      .where(_loadErrors.containsKey)
+                      .map((key) => '$key加载失败：${_loadErrors[key]}')
+                      .join('\n'),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             child,
           ],
         ),

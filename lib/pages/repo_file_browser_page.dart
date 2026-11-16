@@ -69,6 +69,13 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
 
   Future<void> _loadFiles() async {
     final generation = ++_filesGeneration;
+    final token = GiteeApi.token;
+    final path = _path;
+    final branch = _branch;
+    final cacheKey = OfflineCache.key(
+        token: token,
+        type: 'contents',
+        parts: [widget.owner, widget.repo, path, branch]);
     setState(() {
       _loading = true;
       _offline = false;
@@ -78,19 +85,18 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
       final files = await GiteeApi.getRepoContents(
         widget.owner,
         widget.repo,
-        path: _path,
-        branch: _branch.isEmpty ? null : _branch,
+        path: path,
+        branch: branch.isEmpty ? null : branch,
       );
+      if (!mounted || generation != _filesGeneration || token != GiteeApi.token) {
+        return;
+      }
       files.sort((a, b) {
         if (a.type == b.type) return a.name.compareTo(b.name);
         return a.type == 'dir' ? -1 : 1;
       });
       unawaited(OfflineCache.write(
-        key: OfflineCache.key(
-          token: GiteeApi.token,
-          type: 'contents',
-          parts: [widget.owner, widget.repo, _path, _branch],
-        ),
+        key: cacheKey,
         value: files.map((file) => file.toJson()).toList(),
       ));
       if (!mounted || generation != _filesGeneration) return;
@@ -101,11 +107,13 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
         _error = null;
       });
     } catch (e) {
-      final cached = await OfflineCache.read(OfflineCache.key(
-        token: GiteeApi.token,
-        type: 'contents',
-        parts: [widget.owner, widget.repo, _path, _branch],
-      ));
+      if (!mounted || generation != _filesGeneration || token != GiteeApi.token) {
+        return;
+      }
+      final cached = await OfflineCache.read(cacheKey);
+      if (!mounted || generation != _filesGeneration || token != GiteeApi.token) {
+        return;
+      }
       final value = cached?.value;
       if (value is List && mounted && generation == _filesGeneration) {
         final files = value
@@ -279,8 +287,8 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
               subtitle: file.type == 'file' && file.size != null
                   ? Text(_formatSize(file.size!))
                   : null,
-              trailing: Icon(Icons.chevron_right,
-                  color: context.mutedForeground),
+              trailing:
+                  Icon(Icons.chevron_right, color: context.mutedForeground),
               onTap: () =>
                   file.type == 'dir' ? _openDir(file) : _openFile(file),
             ),
@@ -316,7 +324,8 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
   Widget _crumbSeparator() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(Icons.chevron_right, size: 14, color: context.mutedForeground),
+      child:
+          Icon(Icons.chevron_right, size: 14, color: context.mutedForeground),
     );
   }
 

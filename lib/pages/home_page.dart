@@ -29,6 +29,7 @@ class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
   User? _user;
   int _unreadCount = 0;
+  int _notificationCountGeneration = 0;
   bool _handlingUnauthorized = false;
   bool _automaticUpdateCheckStarted = false;
 
@@ -89,9 +90,12 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadNotificationCount() async {
+    final generation = ++_notificationCountGeneration;
     try {
       final count = await GiteeApi.getNotificationCount();
-      if (mounted) setState(() => _unreadCount = count);
+      if (mounted && generation == _notificationCountGeneration) {
+        setState(() => _unreadCount = count);
+      }
     } catch (_) {}
   }
 
@@ -132,6 +136,7 @@ class _HomePageState extends State<HomePage> {
       DynamicsPage(
         userLogin: _user?.login,
         onUnreadCountChanged: (count) {
+          _notificationCountGeneration++;
           if (mounted) setState(() => _unreadCount = count);
         },
       ),

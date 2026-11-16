@@ -21,7 +21,8 @@ import 'issue_detail_page.dart';
 enum _SearchType { repo, user, issue }
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.repoSearch});
+  final SoSearchApi? repoSearch;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -66,9 +67,15 @@ class _SearchPageState extends State<SearchPage> {
 
   /// 输入防抖：停顿 400ms 后自动搜索；回车/点标签仍即时触发。
   void _onQueryChanged(String value) {
-    setState(() {});
     _debounce?.cancel();
     final q = value.trim();
+    if (q.isEmpty) {
+      _reset();
+      return;
+    }
+    // Invalidate results immediately, including during the debounce interval.
+    _searchGeneration++;
+    setState(() => _loading = false);
     if (q.isEmpty || q == _lastQuery) return;
     _debounce = Timer(const Duration(milliseconds: 400), () {
       _search(recordHistory: false);
@@ -79,7 +86,12 @@ class _SearchPageState extends State<SearchPage> {
     bool loadMore = false,
     bool recordHistory = true,
   }) async {
-    final q = _ctrl.text.trim();
+    if (loadMore &&
+        (_loading || !_hasMore || _ctrl.text.trim() != _lastQuery)) {
+      return;
+    }
+    _debounce?.cancel();
+    final q = loadMore ? _lastQuery : _ctrl.text.trim();
     if (q.isEmpty) return;
     final generation = ++_searchGeneration;
     if (!loadMore) {
@@ -94,8 +106,6 @@ class _SearchPageState extends State<SearchPage> {
       if (recordHistory && mounted) {
         AppSettingsScope.of(context).addSearchHistory(q);
       }
-    } else if (_loading) {
-      return;
     }
     if (!_hasMore) return;
     setState(() => _loading = true);
@@ -104,7 +114,7 @@ class _SearchPageState extends State<SearchPage> {
       if (_type == _SearchType.repo) {
         // v5 搜索接口存在服务端已知问题（常返回空结果），仓库搜索走
         // Gitee 网页搜索同款数据源。
-        final list = await SoSearchApi.shared.searchRepos(
+        final list = await (widget.repoSearch ?? SoSearchApi.shared).searchRepos(
           _lastQuery,
           from: (page - 1) * 30,
           size: 30,
@@ -160,6 +170,7 @@ class _SearchPageState extends State<SearchPage> {
 
   void _switchType(_SearchType type) {
     if (_type == type) return;
+    _debounce?.cancel();
     setState(() => _type = type);
     if (_searched) _search();
   }
@@ -167,13 +178,19 @@ class _SearchPageState extends State<SearchPage> {
   void _onScroll() {
     if (_scroll.hasClients &&
         _scroll.position.pixels >= _scroll.position.maxScrollExtent - 160) {
-      if (!_loading && _hasMore && _searched) _search(loadMore: true);
+      if (!_loading && _hasMore && _searched && _error == null) {
+        _search(loadMore: true);
+      }
     }
   }
 
   void _reset() {
+    _debounce?.cancel();
+    _searchGeneration++;
     setState(() {
       _ctrl.clear();
+      _lastQuery = '';
+      _loading = false;
       _searched = false;
       _error = null;
       _page = 1;
@@ -252,8 +269,8 @@ class _SearchPageState extends State<SearchPage> {
                         label: const Text('应用筛选'),
                         onPressed: () {
                           _issueState = issueState;
-                          _issueRepo = issueRepo;
-                          _issueLabel = issueLabel;
+                          _issueRepo = issueRepo.trim();
+                          _issueLabel = issueLabel.trim();
                           _userSort = userSort;
                           Navigator.pop(context);
                           if (_searched) _search();
@@ -359,17 +376,22 @@ class _SearchPageState extends State<SearchPage> {
     );
   }
 
-  bool get _hasActiveFilter =>
-      _issueState.isNotEmpty ||
-      _issueRepo.isNotEmpty ||
-      _issueLabel.isNotEmpty ||
-      _userSort.isNotEmpty;
+  bool get _hasActiveFilter => _type == _SearchType.issue
+      ? (_issueState.isNotEmpty ||
+          _issueRepo.isNotEmpty ||
+          _issueLabel.isNotEmpty)
+      : _type == _SearchType.user && _userSort.isNotEmpty;
   String get _filterSummary {
     final parts = <String>[];
-    if (_issueRepo.isNotEmpty) parts.add(_issueRepo);
-    if (_issueLabel.isNotEmpty) parts.add('标签: $_issueLabel');
-    if (_issueState.isNotEmpty) parts.add(_issueState == 'open' ? '开启' : '已关闭');
-    if (_userSort.isNotEmpty) parts.add('已排序');
+    if (_type == _SearchType.issue) {
+      if (_issueRepo.isNotEmpty) parts.add(_issueRepo);
+      if (_issueLabel.isNotEmpty) parts.add('标签: $_issueLabel');
+      if (_issueState.isNotEmpty) {
+        parts.add(
+            {'open': '开启', 'closed': '已关闭', 'rejected': '已拒绝'}[_issueState]!);
+      }
+    }
+    if (_type == _SearchType.user && _userSort.isNotEmpty) parts.add('按注册时间排序');
     return '筛选：${parts.join(' · ')}';
   }
 
@@ -379,7 +401,9 @@ class _SearchPageState extends State<SearchPage> {
         : _type == _SearchType.user
             ? _userResults.length
             : _issueResults.length;
-    if (items == 0 && _loading) return const SkeletonList(variant: SkeletonVariant.repoCard);
+    if (items == 0 && _loading) {
+      return const SkeletonList(variant: SkeletonVariant.repoCard);
+    }
     if (items == 0 && _error != null) {
       return ErrorState(message: _error!, onRetry: () => _search());
     }
@@ -406,7 +430,12 @@ class _SearchPageState extends State<SearchPage> {
             itemCount: items + 1,
             itemBuilder: (context, index) {
               if (index >= items) {
-                return ListFooter(loading: _loading, hasMore: _hasMore);
+                return ListFooter(
+                    loading: _loading,
+                    hasMore: _hasMore,
+                    error: _error,
+                    onRetry: () => _search(loadMore: true),
+                    onLoadMore: () => _search(loadMore: true));
               }
               if (_type == _SearchType.repo) {
                 return RepoCard(repo: _repoResults[index]);

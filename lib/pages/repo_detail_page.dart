@@ -81,6 +81,9 @@ class _RepoDetailPageState extends State<RepoDetailPage>
   /// 先显示仓库主体，附属接口分别加载，避免单个接口让整页失效。
   Future<void> _loadAll() async {
     final loadVersion = ++_loadVersion;
+    final token = GiteeApi.token;
+    final cacheKey = OfflineCache.key(
+        token: token, type: 'repo', parts: [widget.owner, widget.repo]);
     setState(() {
       _loading = true;
       _error = null;
@@ -94,12 +97,11 @@ class _RepoDetailPageState extends State<RepoDetailPage>
     });
     try {
       final repo = await GiteeApi.getRepoDetail(widget.owner, widget.repo);
+      if (!mounted || loadVersion != _loadVersion || token != GiteeApi.token) {
+        return;
+      }
       unawaited(OfflineCache.write(
-        key: OfflineCache.key(
-          token: GiteeApi.token,
-          type: 'repo',
-          parts: [widget.owner, widget.repo],
-        ),
+        key: cacheKey,
         value: repo.toJson(),
       ));
       if (!mounted || loadVersion != _loadVersion) return;
@@ -115,11 +117,13 @@ class _RepoDetailPageState extends State<RepoDetailPage>
       }
       unawaited(_loadSupplementaryData(repo, loadVersion));
     } catch (e) {
-      final cached = await OfflineCache.read(OfflineCache.key(
-        token: GiteeApi.token,
-        type: 'repo',
-        parts: [widget.owner, widget.repo],
-      ));
+      if (!mounted || loadVersion != _loadVersion || token != GiteeApi.token) {
+        return;
+      }
+      final cached = await OfflineCache.read(cacheKey);
+      if (!mounted || loadVersion != _loadVersion || token != GiteeApi.token) {
+        return;
+      }
       final value = cached?.value;
       if (value is Map) {
         final repo = Repo.fromJson(Map<String, dynamic>.from(value));
@@ -200,6 +204,11 @@ class _RepoDetailPageState extends State<RepoDetailPage>
 
   Future<void> _loadReadme(String branch, {required int loadVersion}) async {
     if (!mounted || loadVersion != _loadVersion) return;
+    final token = GiteeApi.token;
+    final cacheKey = OfflineCache.key(
+        token: token,
+        type: 'readme',
+        parts: [widget.owner, widget.repo, branch]);
     setState(() {
       _readmeLoading = true;
       _readmeError = null;
@@ -211,12 +220,14 @@ class _RepoDetailPageState extends State<RepoDetailPage>
         widget.repo,
         branch: branch,
       );
+      if (!mounted ||
+          loadVersion != _loadVersion ||
+          token != GiteeApi.token ||
+          _branch != branch) {
+        return;
+      }
       unawaited(OfflineCache.write(
-        key: OfflineCache.key(
-          token: GiteeApi.token,
-          type: 'readme',
-          parts: [widget.owner, widget.repo, branch],
-        ),
+        key: cacheKey,
         value: readme,
       ));
       if (!mounted || loadVersion != _loadVersion || _branch != branch) return;
@@ -225,11 +236,19 @@ class _RepoDetailPageState extends State<RepoDetailPage>
         _readmeOffline = false;
       });
     } catch (_) {
-      final cached = await OfflineCache.read(OfflineCache.key(
-        token: GiteeApi.token,
-        type: 'readme',
-        parts: [widget.owner, widget.repo, branch],
-      ));
+      if (!mounted ||
+          loadVersion != _loadVersion ||
+          token != GiteeApi.token ||
+          _branch != branch) {
+        return;
+      }
+      final cached = await OfflineCache.read(cacheKey);
+      if (!mounted ||
+          loadVersion != _loadVersion ||
+          token != GiteeApi.token ||
+          _branch != branch) {
+        return;
+      }
       final value = cached?.value;
       if (value is String &&
           mounted &&

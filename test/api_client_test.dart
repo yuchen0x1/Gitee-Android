@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -120,6 +121,79 @@ void main() {
       await client.requestCached('/search', query: {'page': '1', 'q': 'dart'});
       await client.requestCached('/search', query: {'q': 'dart', 'page': '1'});
       expect(calls, 1);
+    });
+
+    test('缓存键统一 API 路径并编码查询参数', () async {
+      var calls = 0;
+      late Uri captured;
+      final client = ApiClient(
+        client: MockClient((request) async {
+          calls++;
+          captured = request.url;
+          return http.Response('[]', 200);
+        }),
+      );
+      await client.requestCached('search', query: {'q': 'dart & flutter'});
+      await client.requestCached('/search', query: {'q': 'dart & flutter'});
+      expect(calls, 1);
+      expect(captured.path, '/api/v5/search');
+      expect(captured.queryParameters['q'], 'dart & flutter');
+    });
+
+    test('并发的同一 GET 只发出一个网络请求', () async {
+      var calls = 0;
+      final client = ApiClient(
+        client: MockClient((_) async {
+          calls++;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          return http.Response('{"ok":true}', 200);
+        }),
+      );
+      final results = await Future.wait([
+        client.requestCached('/user'),
+        client.requestCached('user'),
+      ]);
+      expect(calls, 1);
+      expect(results[0], equals(results[1]));
+    });
+
+    test('清理缓存后旧的 in-flight 响应不会重新写入缓存', () async {
+      var calls = 0;
+      final responseReady = Completer<http.Response>();
+      final client = ApiClient(
+        client: MockClient((_) async {
+          calls++;
+          return responseReady.future;
+        }),
+      );
+      final pending = client.requestCached('/user');
+      client.clearCache();
+      responseReady.complete(http.Response('{"old":true}', 200));
+      await pending;
+      await client.requestCached('/user');
+      expect(calls, 2);
+    });
+
+    test('写请求竞态完成后旧 GET 不会重新缓存', () async {
+      var calls = 0;
+      final readReady = Completer<http.Response>();
+      final client = ApiClient(
+        client: MockClient((request) async {
+          calls++;
+          if (request.method == 'GET') return readReady.future;
+          return http.Response('{}', 200);
+        }),
+      );
+      final oldRead = client.requestCached('/repos/x/y');
+      await client.request(
+        'PATCH',
+        '/repos/x/y/issues/3',
+        body: {'title': 'new'},
+      );
+      readReady.complete(http.Response('{"old":true}', 200));
+      await oldRead;
+      await client.requestCached('/repos/x/y');
+      expect(calls, 3);
     });
   });
 }

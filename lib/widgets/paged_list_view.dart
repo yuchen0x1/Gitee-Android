@@ -15,6 +15,7 @@ class PagedListView<T> extends StatefulWidget {
   final String? emptyActionLabel;
   final VoidCallback? emptyOnAction;
   final bool supportsPagination;
+  final int pageSize;
   final EdgeInsetsGeometry padding;
 
   const PagedListView({
@@ -27,8 +28,9 @@ class PagedListView<T> extends StatefulWidget {
     this.emptyActionLabel,
     this.emptyOnAction,
     this.supportsPagination = true,
+    this.pageSize = 20,
     this.padding = const EdgeInsets.all(16),
-  });
+  }) : assert(pageSize > 0);
 
   @override
   State<PagedListView<T>> createState() => PagedListViewState<T>();
@@ -43,6 +45,7 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
   bool _hasMore = true;
   int _page = 1;
   String? _error;
+  bool _failedRefresh = false;
 
   @override
   void initState() {
@@ -56,29 +59,25 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
 
   Future<void> _load({bool refresh = false}) async {
     if (_requestInFlight && !refresh) return;
-    final generation = ++_generation;
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _items.clear();
-    }
     if (!_hasMore && !refresh) return;
+    final generation = ++_generation;
+    final requestedPage = refresh ? 1 : _page;
     setState(() {
       _loading = true;
       _requestInFlight = true;
       _error = null;
     });
     try {
-      final list = await widget.loadPage(_page);
+      final list = await widget.loadPage(requestedPage);
       if (!mounted || generation != _generation) return;
       setState(() {
         _loading = false;
         _requestInFlight = false;
         _error = null;
+        if (refresh) _items.clear();
         _items.addAll(list);
-        // ponytail: 以页大小 20 判定是否还有更多；perPage 变更时需同步调整。
-        if (!widget.supportsPagination || list.length < 20) _hasMore = false;
-        _page++;
+        _hasMore = widget.supportsPagination && list.length >= widget.pageSize;
+        _page = requestedPage + 1;
       });
     } catch (e) {
       if (mounted && generation == _generation) {
@@ -86,6 +85,7 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
           _loading = false;
           _requestInFlight = false;
           _error = friendlyError(e);
+          _failedRefresh = refresh;
         });
       }
     }
@@ -93,7 +93,7 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
 
   void _onScroll() {
     if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 100) {
-      if (!_requestInFlight && !_loading && _hasMore) _load();
+      if (!_requestInFlight && !_loading && _hasMore && _error == null) _load();
     }
   }
 
@@ -109,8 +109,7 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
         title: widget.emptyTitle,
         subtitle: widget.emptySubtitle,
         actionLabel: widget.emptyActionLabel ?? '刷新',
-        onAction:
-            widget.emptyOnAction ?? () => _load(refresh: true),
+        onAction: widget.emptyOnAction ?? () => _load(refresh: true),
       );
     }
     return RefreshIndicator(
@@ -120,10 +119,15 @@ class PagedListViewState<T> extends State<PagedListView<T>> {
         controller: _scroll,
         physics: const AlwaysScrollableScrollPhysics(),
         padding: widget.padding,
-        itemCount: _items.length + (_hasMore || _loading ? 1 : 0),
+        itemCount: _items.length + 1,
         itemBuilder: (context, index) {
           if (index >= _items.length) {
-            return ListFooter(loading: _loading, hasMore: _hasMore);
+            return ListFooter(
+                loading: _loading,
+                hasMore: _hasMore,
+                error: _error,
+                onRetry: () => _load(refresh: _failedRefresh),
+                onLoadMore: () => _load());
           }
           return widget.itemBuilder(context, _items[index]);
         },

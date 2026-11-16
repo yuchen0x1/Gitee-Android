@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import '../api/gitee_api.dart';
 import '../models/event.dart';
-import '../models/notification.dart';
 import '../theme/app_theme.dart';
 import '../utils/error_message.dart';
-import '../utils/launch_url.dart';
 import '../widgets/anim.dart';
 import '../widgets/app_image.dart';
 import '../widgets/glass_surface.dart';
 import '../widgets/skeleton_list.dart';
-import '../widgets/notification_group_list.dart';
+import '../widgets/notifications_view.dart';
 import '../widgets/state_views.dart';
 import '../widgets/time_format.dart';
 
@@ -50,159 +48,6 @@ class DynamicsPage extends StatelessWidget {
         ),
       ),
     );
-  }
-}
-
-class NotificationsView extends StatefulWidget {
-  final ValueChanged<int>? onUnreadCountChanged;
-
-  const NotificationsView({super.key, this.onUnreadCountChanged});
-
-  @override
-  State<NotificationsView> createState() => _NotificationsViewState();
-}
-
-class _NotificationsViewState extends State<NotificationsView> {
-  final List<AppNotification> _items = [];
-  final ScrollController _scroll = ScrollController();
-  bool _loading = true;
-  bool _requestInFlight = false;
-  int _generation = 0;
-  bool _hasMore = true;
-  int _page = 1;
-  int _unreadCount = 0;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _scroll.addListener(_onScroll);
-    _load();
-  }
-
-  Future<void> _load({bool refresh = false}) async {
-    if (_requestInFlight && !refresh) return;
-    final generation = ++_generation;
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _items.clear();
-    }
-    if (!_hasMore && !refresh) return;
-    setState(() {
-      _loading = true;
-      _requestInFlight = true;
-    });
-    try {
-      final list = await GiteeApi.getNotifications(page: _page, perPage: 20);
-      final unread = await GiteeApi.getNotificationCount();
-      if (!mounted || generation != _generation) return;
-      setState(() {
-        _loading = false;
-        _requestInFlight = false;
-        _error = null;
-        _items.addAll(list);
-        _unreadCount = unread;
-        widget.onUnreadCountChanged?.call(unread);
-        if (list.length < 20) _hasMore = false;
-        _page++;
-      });
-    } catch (e) {
-      if (mounted && generation == _generation) {
-        setState(() {
-          _loading = false;
-          _requestInFlight = false;
-          _error = friendlyError(e);
-        });
-      }
-    }
-  }
-
-  void _onScroll() {
-    if (_scroll.position.pixels >= _scroll.position.maxScrollExtent - 100) {
-      if (!_requestInFlight && !_loading && _hasMore) _load();
-    }
-  }
-
-  Future<void> _open(AppNotification item) async {
-    if (item.htmlUrl.isEmpty) return;
-    await launchExternalUrl(item.htmlUrl);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_items.isEmpty && _loading) return const SkeletonList(variant: SkeletonVariant.commitRow);
-    if (_items.isEmpty && _error != null) {
-      return ErrorState(message: _error!, onRetry: () => _load(refresh: true));
-    }
-    if (_items.isEmpty) {
-      return const EmptyState(
-        icon: Icons.notifications_none,
-        title: '暂无通知',
-        subtitle: '有新通知时会第一时间出现在这里',
-      );
-    }
-    return Column(
-      children: [
-        if (_unreadCount > 0)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
-            child: Row(
-              children: [
-                const Icon(Icons.mark_email_unread_outlined,
-                    size: 18, color: AppColors.primaryRed),
-                const SizedBox(width: 8),
-                Text('$_unreadCount 条未读通知',
-                    style: Theme.of(context).textTheme.bodySmall),
-                const Spacer(),
-                TextButton(
-                  onPressed: () async {
-                    try {
-                      await GiteeApi.markAllNotificationsRead();
-                      if (mounted) {
-                        setState(() => _unreadCount = 0);
-                        widget.onUnreadCountChanged?.call(0);
-                      }
-                    } catch (_) {}
-                  },
-                  child: const Text('全部已读'),
-                ),
-              ],
-            ),
-          ),
-        Expanded(
-          child: RefreshIndicator(
-            color: AppColors.primaryRed,
-            onRefresh: () => _load(refresh: true),
-            child: NotificationGroupList(
-              items: _items,
-              controller: _scroll,
-              loading: _loading,
-              hasMore: _hasMore,
-              onTap: _open,
-              onDismiss: (item) {
-                final index = _items.indexOf(item);
-                if (index >= 0) {
-                  _items.removeAt(index);
-                  setState(() {
-                    if (item.unread && _unreadCount > 0) _unreadCount--;
-                  });
-                  widget.onUnreadCountChanged?.call(_unreadCount);
-                  GiteeApi.markNotificationRead(item.id)
-                      .then((_) {}, onError: (_) {});
-                }
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
   }
 }
 
@@ -389,7 +234,8 @@ class _EventCard extends StatelessWidget {
                     width: 1.2,
                   ),
                 ),
-                child: AppAvatar(url: event.actor?.avatarUrl ?? '', size: 38, radius: 19),
+                child: AppAvatar(
+                    url: event.actor?.avatarUrl ?? '', size: 38, radius: 19),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -423,11 +269,13 @@ class _EventCard extends StatelessWidget {
                     if (event.repoName.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: accent.withValues(alpha: 0.08),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: accent.withValues(alpha: 0.2), width: 0.8),
+                          border: Border.all(
+                              color: accent.withValues(alpha: 0.2), width: 0.8),
                         ),
                         child: Text(
                           event.repoName,

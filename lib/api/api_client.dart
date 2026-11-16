@@ -31,19 +31,45 @@ class ApiClient {
   String? _token;
   void Function()? onUnauthorized;
   final Map<String, _CacheEntry> _ttlCache = {};
+  final Map<String, Future<dynamic>> _pendingCacheRequests = {};
+  int _cacheGeneration = 0;
+  int _sessionGeneration = 0;
 
   static const String baseUrl = 'https://gitee.com/api/v5';
 
-  void setToken(String? token) => _token = token;
+  void setToken(String? token) {
+    if (_token == token) return;
+    _token = token;
+    _sessionGeneration++;
+    clearCache();
+  }
+
   String? get token => _token;
 
-  void clearCache() => _ttlCache.clear();
+  void clearCache() {
+    // In-flight requests cannot be cancelled reliably across all clients.
+    // A generation guard prevents an old-account response being cached after
+    // a token switch or logout.
+    _cacheGeneration++;
+    _ttlCache.clear();
+    _pendingCacheRequests.clear();
+  }
 
   /// Invalidates cached resources on the same API path hierarchy as a write.
   /// Unrelated cached resources remain available, avoiding a global cache flush.
   void invalidateCacheForPath(String path) {
+    // A write may race with an already-running GET. Invalidate the generation
+    // for all in-flight reads so an old response cannot repopulate any cache;
+    // completed unrelated entries remain untouched below.
+    _cacheGeneration++;
     final normalizedPath = normalizeApiPath(path);
     _ttlCache.removeWhere((key, _) {
+      final cachedPath = key.split('?').first;
+      return cachedPath == normalizedPath ||
+          cachedPath.startsWith('$normalizedPath/') ||
+          normalizedPath.startsWith('$cachedPath/');
+    });
+    _pendingCacheRequests.removeWhere((key, _) {
       final cachedPath = key.split('?').first;
       return cachedPath == normalizedPath ||
           cachedPath.startsWith('$normalizedPath/') ||
@@ -128,6 +154,7 @@ class ApiClient {
       throw ArgumentError.value(method, 'method', '不支持的 HTTP 方法');
     }
     final uri = buildUri(path, query: query);
+    final session = _sessionGeneration;
     try {
       // 创建 Issue 与 PR 的官方接口要求使用表单编码，其余写请求保持 JSON。
       final requestHeaders = headers(formEncoded: formEncoded);
@@ -169,6 +196,7 @@ class ApiClient {
         default:
           throw StateError('Unsupported HTTP method: $normalizedMethod');
       }
+      _checkSession(session);
       final result = _handleResponse(res);
       if (normalizedMethod != 'GET') {
         invalidateCacheForPath(path);
@@ -189,22 +217,40 @@ class ApiClient {
     Map<String, String>? query,
     Duration ttl = const Duration(seconds: 30),
   }) async {
+    final normalizedPath = normalizeApiPath(path);
     final normalizedQuery = query == null
         ? ''
-        : (query.entries.toList()
-              ..sort((a, b) => a.key.compareTo(b.key)))
-            .map((e) => '${e.key}=${e.value}')
+        : (query.entries.toList()..sort((a, b) => a.key.compareTo(b.key)))
+            .map((e) => '${Uri.encodeQueryComponent(e.key)}='
+                '${Uri.encodeQueryComponent(e.value)}')
             .join('&');
-    final key = '$path?$normalizedQuery';
+    final key = '$normalizedPath?$normalizedQuery';
     final hit = _ttlCache[key];
     if (hit != null && DateTime.now().difference(hit.at) < ttl) {
       return hit.data;
     }
-    // ponytail: 超 50 条整体清空，简单防内存膨胀；如需更细可改 LRU。
-    if (_ttlCache.length > 50) _ttlCache.clear();
-    final data = await request('GET', path, query: query);
-    _ttlCache[key] = _CacheEntry(data, DateTime.now());
-    return data;
+    final pending = _pendingCacheRequests[key];
+    if (pending != null) return pending;
+
+    // 超过 50 条整体清空，简单防内存膨胀；如需更细可改 LRU。
+    if (_ttlCache.length >= 50) _ttlCache.clear();
+    final generation = _cacheGeneration;
+    late final Future<dynamic> future;
+    future = () async {
+      try {
+        final data = await request('GET', normalizedPath, query: query);
+        if (_cacheGeneration == generation) {
+          _ttlCache[key] = _CacheEntry(data, DateTime.now());
+        }
+        return data;
+      } finally {
+        if (identical(_pendingCacheRequests[key], future)) {
+          _pendingCacheRequests.remove(key);
+        }
+      }
+    }();
+    _pendingCacheRequests[key] = future;
+    return future;
   }
 
   /// multipart/form-data 文件上传（如 Release 附件），复用统一的错误映射。
@@ -216,6 +262,7 @@ class ApiClient {
     required String filename,
   }) async {
     final uri = buildUri(path, query: query);
+    final session = _sessionGeneration;
     try {
       final request = http.MultipartRequest('POST', uri)
         ..headers['Accept'] = 'application/json'
@@ -226,11 +273,11 @@ class ApiClient {
       if (_token != null) {
         request.headers['Authorization'] = 'token ${_token!}';
       }
-      final streamed = await _client
-          .send(request)
-          .timeout(const Duration(seconds: 60));
+      final streamed =
+          await _client.send(request).timeout(const Duration(seconds: 60));
       final res = await http.Response.fromStream(streamed)
           .timeout(const Duration(seconds: 60));
+      _checkSession(session);
       final result = _handleResponse(res);
       invalidateCacheForPath(path);
       return result;
@@ -240,6 +287,12 @@ class ApiClient {
       rethrow;
     } catch (_) {
       throw GiteeApiException('网络异常，请检查网络连接');
+    }
+  }
+
+  void _checkSession(int session) {
+    if (session != _sessionGeneration) {
+      throw GiteeApiException('账号已切换，请重新加载');
     }
   }
 

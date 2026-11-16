@@ -1,7 +1,7 @@
 name: gitee_client
 description: A pure Gitee client built with Flutter.
 publish_to: 'none'
-version: 1.4.1+7
+version: 1.4.2+8
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -20,6 +20,8 @@ dependencies:
   highlight: ^0.7.0
   app_links: ^7.2.2
   package_info_plus: ^10.2.2
+  path_provider: ^2.1.6
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

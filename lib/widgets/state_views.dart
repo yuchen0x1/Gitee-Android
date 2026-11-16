@@ -109,8 +109,17 @@ class ErrorState extends StatelessWidget {
 class ListFooter extends StatelessWidget {
   final bool loading;
   final bool hasMore;
+  final String? error;
+  final VoidCallback? onRetry;
+  final VoidCallback? onLoadMore;
 
-  const ListFooter({super.key, this.loading = false, this.hasMore = true});
+  const ListFooter(
+      {super.key,
+      this.loading = false,
+      this.hasMore = true,
+      this.error,
+      this.onRetry,
+      this.onLoadMore});
 
   @override
   Widget build(BuildContext context) {
@@ -119,6 +128,24 @@ class ListFooter extends StatelessWidget {
         padding: EdgeInsets.all(16),
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
+    }
+    if (error != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(children: [
+          Text(error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          TextButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('重试')),
+        ]),
+      );
+    }
+    if (hasMore && onLoadMore != null) {
+      return Center(
+          child: TextButton(onPressed: onLoadMore, child: const Text('加载更多')));
     }
     if (!hasMore) {
       return Padding(

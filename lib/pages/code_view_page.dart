@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../utils/error_message.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
 import 'package:highlight/highlight.dart';
 import '../api/gitee_api.dart';
 import '../api/api_client.dart';
@@ -55,6 +54,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
   double _fontSize = 13.0;
   String _sha = '';
   bool _offline = false;
+  int _loadGeneration = 0;
 
   String get _branch {
     final value = widget.branch;
@@ -153,20 +153,27 @@ class _CodeViewPageState extends State<CodeViewPage> {
   }
 
   Future<void> _loadContent() async {
+    final generation = ++_loadGeneration;
+    final token = GiteeApi.token;
+    final cacheKey = OfflineCache.key(
+        token: token,
+        type: 'file',
+        parts: [widget.owner, widget.repo, widget.path, widget.branch ?? '']);
     setState(() => _loading = true);
     try {
       final result = await GiteeApi.getFileWithSha(
         widget.owner,
         widget.repo,
         widget.path,
-        branch: _branch == 'master' ? null : _branch,
+        branch: widget.branch,
       );
+      if (!mounted ||
+          generation != _loadGeneration ||
+          token != GiteeApi.token) {
+        return;
+      }
       unawaited(OfflineCache.write(
-        key: OfflineCache.key(
-          token: GiteeApi.token,
-          type: 'file',
-          parts: [widget.owner, widget.repo, widget.path, _branch],
-        ),
+        key: cacheKey,
         value: {'content': result.content, 'sha': result.sha},
       ));
       if (!mounted) return;
@@ -178,11 +185,17 @@ class _CodeViewPageState extends State<CodeViewPage> {
         _error = null;
       });
     } catch (e) {
-      final cached = await OfflineCache.read(OfflineCache.key(
-        token: GiteeApi.token,
-        type: 'file',
-        parts: [widget.owner, widget.repo, widget.path, _branch],
-      ));
+      if (!mounted ||
+          generation != _loadGeneration ||
+          token != GiteeApi.token) {
+        return;
+      }
+      final cached = await OfflineCache.read(cacheKey);
+      if (!mounted ||
+          generation != _loadGeneration ||
+          token != GiteeApi.token) {
+        return;
+      }
       final value = cached?.value;
       if (value is Map && value['content'] is String && mounted) {
         setState(() {
@@ -211,39 +224,19 @@ class _CodeViewPageState extends State<CodeViewPage> {
 
   Future<void> _editFile() async {
     if (_content == null || _sha.isEmpty) return;
-    final controller = TextEditingController(text: _content);
-    final saved = await showDialog<bool>(
+    final newContent = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('编辑文件'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: TextField(
-            controller: controller,
-            maxLines: null,
-            keyboardType: TextInputType.multiline,
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('保存')),
-        ],
-      ),
+      builder: (_) => _FileEditDialog(initialContent: _content!),
     );
-    controller.dispose();
-    if (saved != true || !mounted) return;
-    final newContent = controller.text;
+    if (newContent == null || !mounted) return;
     if (newContent == _content) return;
     try {
       await GiteeApi.updateRepoFile(
         owner: widget.owner,
         repo: widget.repo,
         path: widget.path,
-        content: base64Encode(utf8.encode(newContent)),
+        content: newContent,
+        branch: widget.branch,
         sha: _sha,
         message: '通过 Gitee Client 编辑 ${widget.fileName}',
       );
@@ -286,6 +279,7 @@ class _CodeViewPageState extends State<CodeViewPage> {
         path: widget.path,
         sha: _sha,
         message: '通过 Gitee Client 删除 ${widget.fileName}',
+        branch: widget.branch,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -406,7 +400,8 @@ class _CodeViewPageState extends State<CodeViewPage> {
   Widget _crumbSeparator(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
-      child: Icon(Icons.chevron_right, size: 14, color: context.mutedForeground),
+      child:
+          Icon(Icons.chevron_right, size: 14, color: context.mutedForeground),
     );
   }
 
@@ -523,4 +518,43 @@ class _CodeViewPageState extends State<CodeViewPage> {
       ),
     );
   }
+}
+
+class _FileEditDialog extends StatefulWidget {
+  const _FileEditDialog({required this.initialContent});
+  final String initialContent;
+
+  @override
+  State<_FileEditDialog> createState() => _FileEditDialogState();
+}
+
+class _FileEditDialogState extends State<_FileEditDialog> {
+  late final TextEditingController _controller =
+      TextEditingController(text: widget.initialContent);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('编辑文件'),
+        content: SizedBox(
+            width: double.maxFinite,
+            child: TextField(
+              controller: _controller,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+            )),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('取消')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, _controller.text),
+              child: const Text('保存')),
+        ],
+      );
 }

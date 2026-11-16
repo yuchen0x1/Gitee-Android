@@ -10,6 +10,22 @@
 
 Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果你需要在通勤、出差或碎片时间里跟进仓库动态、回复 Issue、审阅 Pull Request，又不想打开浏览器或桌面 IDE，它就是为此准备的。
 
+## 最新更新
+
+### v1.4.2 · 2026-11-16
+
+- 通知中心支持未读/全部筛选、可靠的已读确认、分页重试和失败恢复。
+- Issue、PR 和代码编辑草稿可恢复，仓库能力中心支持分区失败提示。
+- 更新下载增加进度、大小和 SHA-256 校验，并改善 Android 安装权限引导。
+- Release 构建缺少正式签名材料时直接失败，避免生成误导性的 Debug 签名包。
+- 更新资产优先使用通用 Android APK，补充项目审计、竞品对标和升级路线文档。
+
+查看[完整版本日志与尚未发布的改进](docs/releases/release-notes.md)。
+
+本轮项目审计、竞品研究、升级路线和验证边界见：[项目审计](PROJECT_AUDIT.md)、[竞品对比](COMPETITOR_ANALYSIS.md)、[升级路线](UPGRADE_ROADMAP.md)、[升级报告](UPGRADE_REPORT.md) 和 [变更日志](CHANGELOG.md)。
+
+## 使用场景
+
 所有请求都直接使用你自己的 Gitee 凭证（私人令牌或 OAuth 访问令牌）访问 Gitee 官方 API，项目不依赖任何自建后端，不内置代理账号，令牌保存在系统安全存储中。
 
 适用场景：
@@ -53,7 +69,8 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 
 **动态与通知**
 
-- 通知列表、未读计数、单条 / 全部标记已读；
+- 按仓库分组的通知中心，支持服务端「未读 / 全部」筛选、未读计数、单条 / 全部标记已读；
+- 已读操作确认成功后更新列表，失败保留内容并提示；支持分页重试、空列表刷新，刷新失败保留已有通知；
 - 用户动态、接收事件、仓库事件流；
 - 关注 / 取消关注用户，查看关注与粉丝列表；组织和组织成员管理。
 
@@ -62,8 +79,11 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 - Material 3 界面，明暗主题跟随设置；
 - 下拉刷新、分页加载、骨架屏、空状态与错误状态；
 - Android 深链入口（`gitee://` scheme）。
+- 仓库能力中心各区块独立处理加载错误，管理接口无权限时仍可查看分支、语言统计等可访问内容。
 
 ## 支持平台
+
+本项目仅开发和发布 Android 版。本地运行请连接 Android 真机或启动 Android 模拟器，不生成 Windows、iOS、macOS、Linux 或 Web 平台工程。
 
 | 平台 | 形态 | 获取方式 |
 | --- | --- | --- |
@@ -79,6 +99,7 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 | Dart SDK | >=3.0.0 <4.0.0（随 Flutter 附带） |
 | JDK | 17（Android 构建需要） |
 | Android SDK | 通过 Android Studio 或命令行工具安装 |
+| Python | >=3.8，仅版本日志提取和测试使用，应用运行不需要 |
 
 装好后先自检：
 
@@ -119,6 +140,8 @@ flutter run
 - **搜索**：仓库、用户、Issue 全局搜索；
 - **我的**：账号信息、关注 / 粉丝、组织、我的 Issue，以及全部设置项。
 
+通知默认显示未读内容，可切换「全部」查看历史通知。点击每条通知右侧的「标记已读」按钮或向左滑动即可处理；仅在服务端成功后更新状态。点击通知标题仍会打开外部网页，不自动将通知标为已读。「全部已读」会先确认操作范围，包含账号内尚未加载的通知。网络失败时可使用刷新或列表底部的重试恢复。
+
 常用设置（「我的 → 设置」）：
 
 | 设置项 | 说明 |
@@ -133,7 +156,9 @@ flutter run
 
 **AI 摘要（可选）**：在「我的 → AI 设置」中填入 OpenAI 兼容接口的 API Key 即可启用，用于把 Issue / PR 浓缩为中文摘要。默认对接 DeepSeek（`https://api.deepseek.com`，模型 `deepseek-chat`），Base URL 和 Model 均可在设置页修改为其他 OpenAI 兼容服务。不配置则该功能不生效，不影响其他功能。
 
-**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查访问 GitHub 公开 Release，REST API 被限流时自动回退 GitHub 网页版发布页；检查不需要登录，不会发送任何令牌；结果在应用进程内缓存 10 分钟。发现新版本时，Android 直接下载通用 APK。
+**应用更新**：进入主页后会自动检查新版本，也可在设置中手动检查。更新检查访问 GitHub 公开 Release，REST API 被限流时自动回退 GitHub 网页版发布页；检查不需要登录，不会发送任何令牌；结果在应用进程内缓存 10 分钟。Android 发现新版本后可下载通用 APK，显示真实进度，校验文件大小和 SHA-256，再交给系统安装器确认安装。缺少校验值或校验失败时会拒绝安装。完整配置与故障处理见 [docs/AUTO_UPDATE.md](docs/AUTO_UPDATE.md)。
+
+正式 Release 构建必须提供 `android/key.properties` 和可读的发布 keystore；缺少签名材料时构建会失败，不会回退到 Debug 签名。真机安装更新还需要 Android 允许本应用安装未知来源应用。
 
 ## 项目结构
 
@@ -150,7 +175,7 @@ Gitee-Android/
 │   ├── theme/            # Material 3 主题
 │   ├── utils/            # 深链、外部链接工具
 │   └── widgets/          # 通用组件：分页列表、Markdown 渲染、骨架屏等
-├── test/                 # 单元测试与组件测试（9 个测试文件）
+├── test/                 # 单元测试与组件测试
 ├── android/              # Android 平台配置（含 gitee:// 深链注册）
 ├── .github/workflows/    # CI 与 Release 工作流
 └── pubspec.yaml          # 依赖与版本号（发布版本以此为准）
@@ -174,11 +199,11 @@ flutter build appbundle --release
 
 - Android APK：`build/app/outputs/flutter-apk/`（Release 通用包为 `app-release.apk`）
 
-**发布新版本**：仓库内置 Release 工作流（见下节），发布时需保证 `pubspec.yaml` 的 `version`（如 `2.0.2+5` 中的 `2.0.2`）与推送的 `v*` 标签一致（如 `v2.0.2`），工作流会在构建前校验两者，不一致将直接失败。客户端的更新检查同样依据该版本号判断是否有新版本。
+**发布新版本**：仓库内置 Release 工作流（见下节），发布时需保证 `pubspec.yaml` 的 `version`（如 `1.4.1+7` 中的 `1.4.1`）与推送的 `v*` 标签一致（如 `v1.4.1`），工作流会在构建前校验两者，不一致将直接失败。客户端的更新检查同样依据该版本号判断是否有新版本。
 
 功能升级后的完整发布流程：
 
-1. 提升 `pubspec.yaml` 的 `version` 并提交；
+1. 在 [完整版本日志](docs/releases/release-notes.md) 中为目标版本补充用户可见的改进，再提升 `pubspec.yaml` 的 `version` 并提交；
 2. 打标签并推送：`git tag v<版本> && git push origin main v<版本>`；
 3. GitHub Actions 的 Release 工作流会自动校验版本、构建安装包并发布 Release；
 
@@ -192,16 +217,21 @@ flutter analyze
 
 # 单元测试与组件测试
 flutter test
+
+# 发布日志选择与缺失版本保护（Python 标准库，无额外依赖）
+python -m unittest discover -s test -p "*_test.py"
 ```
 
-测试覆盖 API 客户端、Gitee 实体解析、OAuth 流程、深链处理、更新服务、Markdown 渲染、外部链接等模块，共 9 个测试文件。
+测试覆盖 API 客户端、Gitee 实体解析、深链处理、更新服务、Markdown 渲染、外部链接、离线缓存、引导流程，以及通知筛选、已读操作失败恢复、计数缓存隔离和仓库能力中心的部分失败恢复等场景。
+
+Android 的生物识别能力要求宿主继承 `FlutterFragmentActivity`，并使用 AppCompat 主题；相关配置位于 `android/app/src/main/`。构建通过不代表真机生物识别或安装更新已经验收。本轮研究、变更与验证边界见 [升级报告](docs/EVOLUTION_2026-11-13.md)。
 
 ## CI/CD
 
 仓库内置两套 GitHub Actions 工作流（`.github/workflows/`）：
 
 - **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK。
-- **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB），并把这些产物发布为对应版本的 Release。
+- **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB），并使用 `docs/releases/release-notes.md` 中对应版本的说明发布 Release；缺少版本说明时停止发布。
 
 发布产物统一在仓库的 [Releases](https://github.com/yuchen0x1/Gitee-Android/releases) 页面下载。
 
@@ -227,7 +257,7 @@ flutter test
 
 ## 致谢
 
-- 设计参考：[GitTouch](https://github.com/pd4d10/git-touch)、[GitNex](https://github.com/gitnex-org/gitnex)、[flutter-GitConnect](https://github.com/TheAlphamerc/flutter-GitConnect)（仅产品与架构参考，未复制代码，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）。
+- 设计参考：[GitTouch](https://github.com/pd4d10/git-touch)、[GitNex](https://github.com/gitnex-org/gitnex)、[flutter-GitConnect](https://github.com/TheAlphamerc/flutter-GitConnect)、[DioHub](https://github.com/namanshergill/diohub)、[FastHub](https://github.com/k0shk0sh/FastHub)（仅产品与架构参考，未移植第三方应用代码，详见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)）。
 
 ## 反馈与交流
 

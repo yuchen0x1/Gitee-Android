@@ -1788,29 +1788,28 @@ class GiteeApi {
   static Future<List<AppNotification>> getNotifications({
     int page = 1,
     int perPage = 20,
+    bool? unread,
   }) async {
     final data = await _request(
       'GET',
       '/notifications/threads',
-      query: _paging(page, perPage),
+      query: {
+        ..._paging(page, perPage),
+        if (unread != null) 'unread': unread.toString(),
+      },
     );
     return _asList(data)
         .map((e) => AppNotification.fromJson(_asMap(e)))
         .toList();
   }
 
-  static DateTime? _notifCountAt;
-  static int _notifCountCache = 0;
-
-  // ponytail: 30s 内存缓存，去重首页与通知页并发请求；需要实时刷新时去掉缓存即可。
-  static Future<int> getNotificationCount({bool unread = true}) async {
-    final now = DateTime.now();
-    if (_notifCountAt != null &&
-        now.difference(_notifCountAt!) < const Duration(seconds: 30)) {
-      return _notifCountCache;
-    }
-    final data = await _request(
-      'GET',
+  /// Reuses the session-scoped transport cache and coalesces concurrent reads.
+  static Future<int> getNotificationCount({
+    bool unread = true,
+    bool forceRefresh = false,
+  }) async {
+    if (forceRefresh) _client.invalidateCacheForPath('/notifications/count');
+    final data = await _requestCached(
       '/notifications/count',
       query: {'unread': unread.toString()},
     );
@@ -1823,8 +1822,6 @@ class GiteeApi {
         0;
     final count =
         value is num ? value.toInt() : int.tryParse(value.toString()) ?? 0;
-    _notifCountAt = now;
-    _notifCountCache = count;
     return count;
   }
 
@@ -1865,10 +1862,12 @@ class GiteeApi {
 
   static Future<void> markNotificationRead(String id) async {
     await _request('PATCH', '/notifications/threads/${_enc(id)}');
+    _client.invalidateCacheForPath('/notifications/count');
   }
 
   static Future<void> markAllNotificationsRead() async {
     await _request('PUT', '/notifications/threads');
+    _client.invalidateCacheForPath('/notifications/count');
   }
 
   // ---------- 用户动态 ----------

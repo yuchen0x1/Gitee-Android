@@ -15,7 +15,7 @@ import '../widgets/update_dialog.dart';
 import 'followers_page.dart';
 import 'ai_settings_page.dart';
 import 'app_changelog_page.dart';
-import 'demo_page.dart';
+import 'usage_guide_page.dart';
 import 'following_page.dart';
 import 'my_issues_page.dart';
 import 'starred_repos_page.dart';
@@ -257,7 +257,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                   title: const Text('使用指南'),
                                   trailing: Icon(Icons.chevron_right,
                                       color: context.mutedForeground),
-                                  onTap: _openDemo,
+                                  onTap: _openUsageGuide,
                                 ),
                                 const Divider(),
                                 ListTile(
@@ -629,9 +629,9 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  void _openDemo() {
+  void _openUsageGuide() {
     Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const DemoPage()));
+        .push(MaterialPageRoute(builder: (_) => const UsageGuidePage()));
   }
 
   void _showAbout() {
@@ -646,7 +646,7 @@ class _ProfilePageState extends State<ProfilePage> {
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _openDemo();
+              _openUsageGuide();
             },
             child: const Text('使用指南'),
           ),

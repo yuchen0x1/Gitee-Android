@@ -12,8 +12,7 @@ void main() {
     'tag_name': 'v2.1.0',
     'name': 'Gitee Client 2.1.0',
     'body': '新增在线更新',
-    'html_url':
-        'https://gitee.com/yuchen0x1/Gitee-Android/releases/tag/v2.1.0',
+    'html_url': 'https://gitee.com/yuchen0x1/Gitee-Android/releases/tag/v2.1.0',
     'published_at': '2026-08-29T00:00:00Z',
     'assets': [
       {
@@ -37,19 +36,70 @@ void main() {
   test('解析 Release 并选择 Android/Windows 安装包', () {
     final update = AppUpdate.fromGitHubJson(releaseJson);
     expect(update.version, 'v2.1.0');
-    expect(update.assetForPlatform(TargetPlatform.android)?.url,
-        'https://example.com/app-release.apk');
-    expect(update.assetForPlatform(TargetPlatform.windows)?.url,
-        'https://example.com/windows.zip');
+    expect(
+      update.assetForPlatform(TargetPlatform.android)?.url,
+      'https://example.com/app-release.apk',
+    );
+    expect(
+      update.assetForPlatform(TargetPlatform.windows)?.url,
+      'https://example.com/windows.zip',
+    );
+  });
+
+  test('只有分架构 APK 时不选择顺序不确定的安装包', () {
+    final update = AppUpdate.fromGitHubJson({
+      'tag_name': 'v2.1.0',
+      'assets': [
+        {
+          'name': 'gitee-client-v2.1.0-android-arm64-v8a.apk',
+          'browser_download_url': 'https://example.com/arm64.apk',
+        },
+        {
+          'name': 'gitee-client-v2.1.0-android-x86_64.apk',
+          'browser_download_url': 'https://example.com/x86_64.apk',
+        },
+      ],
+    });
+    expect(update.assetForPlatform(TargetPlatform.android), isNull);
+  });
+
+  test('解析 GitHub digest 并定位校验和资产', () {
+    const digest =
+        'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    final update = AppUpdate.fromGitHubJson({
+      'tag_name': 'v2.1.0',
+      'name': 'Gitee Client 2.1.0',
+      'body': '',
+      'html_url': UpdateService.githubLatestReleasePageUrl,
+      'published_at': '2026-11-12T00:00:00Z',
+      'assets': [
+        {
+          'name': 'gitee-client-v2.1.0-android-universal.apk',
+          'browser_download_url':
+              'https://github.com/yuchen0x1/Gitee-Android/releases/download/v2.1.0/app.apk',
+          'digest': digest,
+        },
+        {
+          'name': 'SHA256SUMS.txt',
+          'browser_download_url':
+              'https://github.com/yuchen0x1/Gitee-Android/releases/download/v2.1.0/SHA256SUMS.txt',
+        },
+      ],
+    });
+    final apk = update.assetForPlatform(TargetPlatform.android)!;
+    expect(apk.sha256, digest.substring('sha256:'.length));
+    expect(update.checksumAssetFor(apk)?.name, 'SHA256SUMS.txt');
   });
 
   test('发现比当前版本更新的 Release', () async {
     final service = UpdateService(
-      client: MockClient((request) async => http.Response(
-            jsonEncode(releaseJson),
-            200,
-            headers: {'content-type': 'application/json'},
-          )),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode(releaseJson),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
     );
     final update = await service.checkForUpdate(currentVersion: '2.0.0');
     expect(update?.version, 'v2.1.0');
@@ -58,11 +108,13 @@ void main() {
 
   test('当前版本等于或高于 Release 时不提示更新', () async {
     final service = UpdateService(
-      client: MockClient((request) async => http.Response(
-            jsonEncode(releaseJson),
-            200,
-            headers: {'content-type': 'application/json'},
-          )),
+      client: MockClient(
+        (request) async => http.Response(
+          jsonEncode(releaseJson),
+          200,
+          headers: {'content-type': 'application/json'},
+        ),
+      ),
     );
     expect(await service.checkForUpdate(currentVersion: '2.1.0'), isNull);
     expect(await service.checkForUpdate(currentVersion: '3.0.0'), isNull);
@@ -117,10 +169,7 @@ void main() {
     await service.checkForUpdate(currentVersion: '2.0.0');
     await service.checkForUpdate(currentVersion: '2.0.0');
     expect(calls, 1);
-    await service.checkForUpdate(
-      currentVersion: '2.0.0',
-      forceRefresh: true,
-    );
+    await service.checkForUpdate(currentVersion: '2.0.0', forceRefresh: true);
     expect(calls, 2);
   });
 
@@ -171,8 +220,11 @@ void main() {
     final service = UpdateService(
       client: MockClient((request) async {
         if (request.url.host == 'api.github.com') {
-          return http.Response(jsonEncode(stale), 200,
-              headers: {'content-type': 'application/json; charset=utf-8'});
+          return http.Response(
+            jsonEncode(stale),
+            200,
+            headers: {'content-type': 'application/json; charset=utf-8'},
+          );
         }
         pageCalls++;
         return http.Response('', 200);
@@ -231,8 +283,10 @@ void main() {
     expect(releases.first.tagName, 'v1.1.0');
     expect(releases.first.name, 'Gitee Client v1.1.0');
     expect(releases.first.body, contains('新增在线更新'));
-    expect(releases.first.htmlUrl,
-        'https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.1.0');
+    expect(
+      releases.first.htmlUrl,
+      'https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.1.0',
+    );
     expect(releases.first.author, 'yuchen0x1');
     expect(releases.first.id, 251744621);
 

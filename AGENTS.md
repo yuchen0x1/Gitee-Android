@@ -9,9 +9,11 @@
 
 # 平台策略（所有 AI 会话必须遵守）
 
-**【永久规则】从 2026-09-07 起，本项目不再保留 Windows 桌面端，以后只更新 Android 手机版。**
+**【永久规则】本项目只开发、运行、构建和发布 Android 版。从 2026-09-07 起不再保留 Windows 桌面端；2026-11-13 再次明确不生成其他平台版本。**
 
-- `windows/` 桌面平台目录已删除，不要重新生成或恢复（如误删可用 `flutter create --platforms=windows .` 重建，但默认不要这么做）。
+- 不要生成或恢复 `windows/`、`ios/`、`macos/`、`linux/`、`web/` 平台工程目录；若发现误生成的其他平台工程或应用产物，只在当前项目范围内清理。
 - 所有功能开发、构建（`flutter build apk`）、发版只针对 Android。
-- 不要在 CI/Release 工作流中添加 Windows 构建任务，也不要在 README 等文档中恢复 Windows 平台的描述。
+- 本地运行仅使用 Android 真机或模拟器，不为预览生成桌面或 Web 版本。
+- 不要在 CI/Release 工作流中添加其他平台构建任务，也不要在 README 等文档中将其他平台写为支持平台。CI 可以使用 Linux/Windows 主机执行 Android 构建。
 - `lib/` 中残留的 `TargetPlatform.windows` 分支（主题、更新包选择）属无害的平台判断代码，保留即可，不要专门清理。
+- Flutter SDK 和第三方插件自带的跨平台实现、依赖锁定信息、测试宿主缓存不代表本项目支持这些平台，不要为清理应用平台而修改 SDK、依赖包或破坏 Android 构建与本地测试。

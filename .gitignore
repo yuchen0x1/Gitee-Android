@@ -2,6 +2,7 @@
 *.class
 *.log
 *.pyc
+__pycache__/
 *.swp
 .DS_Store
 .atom/
@@ -25,12 +26,12 @@ migrate_working_dir/
 
 # Flutter/Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
+/android/build/
 /coverage/
 
 # Symbolication related
@@ -43,7 +44,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/windows/.plugin_symlinks/
+
+# This application ships only on Android. Do not add generated platform shells.
+/windows/
+/ios/
+/macos/
+/linux/
+/web/
 
 # Local SDK paths, credentials, and signing material
 **/local.properties
@@ -65,3 +72,9 @@ app.*.map.json
 
 # ZCode 工具产物
 .zcode/
+
+# Local agent sessions, research evidence, and machine-specific artifacts
+/.workbuddy/
+/.evolution/
+/.local/
+/PROJECT_AUDIT_REPORT.md

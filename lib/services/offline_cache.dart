@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
@@ -13,7 +14,7 @@ class OfflineCacheEntry {
 class OfflineCache {
   OfflineCache._();
 
-  static const _prefix = 'offline_cache_v1_';
+  static const _prefix = 'offline_cache_v2_';
   static const _maxEntryBytes = 512 * 1024;
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(resetOnError: true),
@@ -62,7 +63,8 @@ class OfflineCache {
   static Future<void> clear() async {
     try {
       final all = await _storage.readAll();
-      for (final key in all.keys.where((key) => key.startsWith(_prefix))) {
+      for (final key in all.keys.where((key) =>
+          key.startsWith(_prefix) || key.startsWith('offline_cache_v1_'))) {
         await _storage.delete(key: key);
       }
     } catch (_) {}
@@ -70,11 +72,7 @@ class OfflineCache {
 
   static String _scope(String? token) {
     if (token == null || token.isEmpty) return 'anonymous';
-    var hash = 0x811c9dc5;
-    for (final codeUnit in token.codeUnits) {
-      hash = ((hash ^ codeUnit) * 0x01000193) & 0xFFFFFFFF;
-    }
-    return hash.toRadixString(16).padLeft(8, '0');
+    return sha256.convert(utf8.encode(token)).toString();
   }
 
   static String _encode(String value) =>

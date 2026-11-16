@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 
 /// 关于 / 使用指南页。
-class DemoPage extends StatelessWidget {
-  const DemoPage({super.key});
+class UsageGuidePage extends StatelessWidget {
+  const UsageGuidePage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -23,8 +23,6 @@ class DemoPage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text('A Flutter client for Gitee.',
                       style: theme.textTheme.bodyMedium),
-                  const SizedBox(height: 12),
-                  Text('版本 1.0.0+1', style: theme.textTheme.bodySmall),
                 ],
               ),
             ),
@@ -78,7 +76,7 @@ class DemoPage extends StatelessWidget {
               Text('• 图片文件直接通过 raw URL 渲染，Gitee 可能有防盗链，部分图片可能无法显示。',
                   style: theme.textTheme.bodySmall),
               Text('• API 有访问频率限制，建议不要频繁刷新。', style: theme.textTheme.bodySmall),
-              Text('• 代码高亮使用简单文本渲染，未接入语法高亮库。',
+              Text('• 代码查看器支持语法高亮、行号、字号调整、折行和复制。',
                   style: theme.textTheme.bodySmall),
             ],
           ),
