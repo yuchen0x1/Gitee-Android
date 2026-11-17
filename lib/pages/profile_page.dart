@@ -8,6 +8,7 @@ import '../providers/app_settings.dart';
 import '../services/offline_cache.dart';
 import '../services/update_service.dart';
 import '../theme/app_theme.dart';
+import '../i18n/app_localizations.dart';
 import '../widgets/app_image.dart';
 import '../widgets/glass_surface.dart';
 import '../widgets/skeleton_list.dart';
@@ -102,6 +103,41 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showLocalePicker() {
+    final settings = AppSettingsScope.of(context);
+    final l10n = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(l10n.t('language'),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+            ),
+            for (final entry in <String, String>{
+              'auto': l10n.t('auto'),
+              'zh-CN': l10n.t('simplifiedChinese'),
+              'en-US': l10n.t('english'),
+            }.entries)
+              ListTile(
+                title: Text(entry.value),
+                trailing: settings.localeSetting == entry.key
+                    ? const Icon(Icons.check, color: AppColors.primaryRed)
+                    : null,
+                onTap: () async {
+                  await settings.setLocaleSetting(entry.key);
+                  if (context.mounted) Navigator.of(context).pop();
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _checkForUpdate() async {
     try {
       final info = await PackageInfo.fromPlatform();
@@ -135,8 +171,9 @@ class _ProfilePageState extends State<ProfilePage> {
     final theme = Theme.of(context);
     final settings = AppSettingsScope.of(context);
     final user = widget.user;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('我的')),
+      appBar: AppBar(title: Text(l10n.t('profile'))),
       body: user == null
           ? const SkeletonList(itemCount: 4)
           : RefreshIndicator(
@@ -158,7 +195,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         const SizedBox(height: 12),
                         _buildQuickGrid(user),
                         const SizedBox(height: 20),
-                        Text('偏好', style: theme.textTheme.titleMedium),
+                        Text(l10n.t('preferences'), style: theme.textTheme.titleMedium),
                         const SizedBox(height: 12),
                         GlassSurface(
                           child: Material(
@@ -174,6 +211,20 @@ class _ProfilePageState extends State<ProfilePage> {
                                   trailing: Icon(Icons.chevron_right,
                                       color: context.mutedForeground),
                                   onTap: _showThemeModePicker,
+                                ),
+                                const Divider(),
+                                ListTile(
+                                  leading: const Icon(Icons.language,
+                                      color: AppColors.primaryRed),
+                                  title: Text(l10n.t('language')),
+                                  subtitle: Text(switch (settings.localeSetting) {
+                                    'zh-CN' => l10n.t('simplifiedChinese'),
+                                    'en-US' => l10n.t('english'),
+                                    _ => l10n.t('auto'),
+                                  }),
+                                  trailing: Icon(Icons.chevron_right,
+                                      color: context.mutedForeground),
+                                  onTap: _showLocalePicker,
                                 ),
                                 const Divider(),
                                 SwitchListTile(

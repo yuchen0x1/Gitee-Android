@@ -1,5 +1,6 @@
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth/auth_store.dart';
 import 'auth/app_lock.dart';
 import 'api/gitee_api.dart';
@@ -11,6 +12,7 @@ import 'pages/ai_settings_page.dart';
 import 'pages/onboarding_page.dart';
 import 'services/offline_cache.dart';
 import 'utils/deep_link.dart';
+import 'i18n/app_localizations.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 bool _handlingUnauthorized = false;
@@ -65,6 +67,14 @@ class GiteeApp extends StatelessWidget {
         child: AppLockGate(
           child: MaterialApp(
             title: 'Gitee Client',
+            locale: settings.locale,
+            supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
             navigatorKey: rootNavigatorKey,
             debugShowCheckedModeBanner: false,
             theme: buildLightTheme(),

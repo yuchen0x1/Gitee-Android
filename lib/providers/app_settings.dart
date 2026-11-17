@@ -8,20 +8,25 @@ enum AppThemeMode { system, light, dark }
 class AppSettingsProvider extends ChangeNotifier {
   AppSettingsProvider({
     AppThemeMode themeMode = AppThemeMode.system,
+    String localeSetting = 'auto',
     List<String>? searchHistory,
     List<String>? recentRepos,
     bool onboardingSeen = false,
   })  : _themeMode = themeMode,
+        _localeSetting = normalizeLocaleSetting(localeSetting),
         _searchHistory = List.of(searchHistory ?? const []),
         _recentRepos = List.of(recentRepos ?? const []),
         _onboardingSeen = onboardingSeen;
 
   AppThemeMode _themeMode;
+  String _localeSetting;
   bool _onboardingSeen;
   final List<String> _searchHistory;
   final List<String> _recentRepos; // 格式: "owner/repo"
 
   AppThemeMode get themeMode => _themeMode;
+  String get localeSetting => _localeSetting;
+  Locale get locale => resolveLocale(_localeSetting);
   bool get onboardingSeen => _onboardingSeen;
   bool get darkMode => _themeMode == AppThemeMode.dark;
   List<String> get searchHistory => List.unmodifiable(_searchHistory);
@@ -63,6 +68,17 @@ class AppSettingsProvider extends ChangeNotifier {
     } catch (_) {
       // 持久化失败不影响内存状态。
     }
+  }
+
+  Future<void> setLocaleSetting(String value) async {
+    final next = normalizeLocaleSetting(value);
+    if (_localeSetting == next) return;
+    _localeSetting = next;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('locale_setting', next);
+    } catch (_) {}
   }
 
   /// 标记已看过首启引导页。
@@ -122,11 +138,30 @@ class AppSettingsProvider extends ChangeNotifier {
     return AppSettingsProvider(
       themeMode: AppThemeMode.values.asNameMap()[themeModeName] ??
           AppThemeMode.system,
+      localeSetting: prefs.getString('locale_setting') ?? 'auto',
       searchHistory: prefs.getStringList('search_history') ?? const [],
       recentRepos: prefs.getStringList('recent_repos') ?? const [],
       onboardingSeen: prefs.getBool('onboarding_seen') ?? false,
     );
   }
+}
+
+String normalizeLocaleSetting(String value) =>
+    value == 'zh-CN' || value == 'en-US' ? value : 'auto';
+
+Locale resolveLocale(String setting) {
+  if (setting == 'zh-CN') return const Locale('zh', 'CN');
+  if (setting == 'en-US') return const Locale('en', 'US');
+  final candidates = WidgetsBinding.instance.platformDispatcher.locales;
+  for (final candidate in candidates) {
+    if (candidate.languageCode.toLowerCase() == 'en') {
+      return const Locale('en', 'US');
+    }
+    if (candidate.languageCode.toLowerCase() == 'zh') {
+      return const Locale('zh', 'CN');
+    }
+  }
+  return const Locale('zh', 'CN');
 }
 
 /// 通过 InheritedNotifier 向整棵组件树提供设置。
