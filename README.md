@@ -2,7 +2,7 @@
 
 > 基于 Flutter 打造的 Gitee（码云）非官方客户端 —— 在手机上刷通知、读代码、回 Issue、审 PR。
 
-![Release](https://img.shields.io/github/v/yuchen0x1/Gitee-Android) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
+![Release](https://img.shields.io/github/v/release/yuchen0x1/Gitee-Android) ![Platform](https://img.shields.io/badge/platform-Android-blue) ![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter) ![License](https://img.shields.io/badge/license-MIT-green) ![Language](https://img.shields.io/badge/language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-green)
 
 > **声明**：本项目并非 Gitee 官方客户端，与深圳市奥思网络科技有限公司（码云运营方）无隶属或授权关系，仅基于 Gitee 开放能力（Open API v5）为开发者提供便利。
 
@@ -12,18 +12,15 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 
 ## 最新更新
 
-### v1.4.3 · 2026-11-17
+<!-- github-release:start -->
 
-- 应用界面支持按 Android 系统语言自动选择中文或 English，也可在「我的 → 偏好」中手动切换并保存。
-- 本轮只翻译应用壳层与设置入口，仓库内容、账号数据和 API 字段保持原样。
+**[v1.4.3](https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.4.3)** · 2026-11-17
 
-### v1.4.2 · 2026-11-16
+v1.4.3 是 Flutter Android 客户端的壳层多语言维护版本。本次新增界面语言设置，接入 Flutter 本地化委托；仓库内容、账号数据和 API 字段保持原样。项目继续仅维护 Android 版。
 
-- 通知中心支持未读/全部筛选、可靠的已读确认、分页重试和失败恢复。
-- Issue、PR 和代码编辑草稿可恢复，仓库能力中心支持分区失败提示。
-- 更新下载增加进度、大小和 SHA-256 校验，并改善 Android 安装权限引导。
-- Release 构建缺少正式签名材料时直接失败，避免生成误导性的 Debug 签名包。
-- 更新资产优先使用通用 Android APK，补充项目审计、竞品对标和升级路线文档。
+[全部发行记录](https://github.com/yuchen0x1/Gitee-Android/releases)
+
+<!-- github-release:end -->
 
 查看[完整版本日志与尚未发布的改进](docs/releases/release-notes.md)。
 
