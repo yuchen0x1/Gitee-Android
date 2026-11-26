@@ -54,8 +54,13 @@ void main() {
             : const PullRequestDetailPage(owner: 'o', repo: 'r', number: 1),
       ));
       await tester.pumpAndSettle();
-      final listFinder = find.byWidgetPredicate(
-          (widget) => widget is ListView && widget.controller != null);
+      final listFinder = find
+          .descendant(
+            of: find.byType(RefreshIndicator),
+            matching: find.byWidgetPredicate(
+                (widget) => widget is ListView && widget.controller != null),
+          )
+          .first;
       final controller = tester.widget<ListView>(listFinder).controller!;
       controller.jumpTo(controller.position.maxScrollExtent);
       await tester.pump();
