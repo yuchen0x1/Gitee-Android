@@ -14,9 +14,9 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 
 <!-- github-release:start -->
 
-**[v1.4.3](https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.4.3)** · 2026-11-17
+**[v1.4.4](https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.4.4)** · 2026-11-26
 
-v1.4.3 是 Flutter Android 客户端的壳层多语言维护版本。本次新增界面语言设置，接入 Flutter 本地化委托；仓库内容、账号数据和 API 字段保持原样。项目继续仅维护 Android 版。
+本版为仓库维护更新：补齐构建产物的忽略规则，清理重复的未发布日志，并修复普通 CI 的分析与构建配置。应用功能和本地数据格式没有变化。
 
 [全部发行记录](https://github.com/yuchen0x1/Gitee-Android/releases)
 
