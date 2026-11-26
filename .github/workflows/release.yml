@@ -71,6 +71,20 @@ jobs:
       - run: flutter build apk --release
       - run: flutter build apk --release --split-per-abi
       - run: flutter build appbundle --release
+      - name: Verify release APK signatures
+        env:
+          EXPECTED_CERT_SHA256: '253e438daf6f55dfc10e232faafc3725eecdf44c691e1849e9c138d9b85fca81'
+        shell: bash
+        run: |
+          APKSIGNER=$(find "${ANDROID_HOME}/build-tools" -type f -name apksigner | sort -V | tail -n 1)
+          test -x "$APKSIGNER"
+          for apk in build/app/outputs/flutter-apk/*-release.apk; do
+            "$APKSIGNER" verify --verbose --print-certs "$apk"
+            cert_digest=$("$APKSIGNER" verify --print-certs "$apk" \
+              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | tr '[:upper:]' '[:lower:]')
+            test "$cert_digest" = "$EXPECTED_CERT_SHA256"
+          done
       - name: Prepare Android assets
         shell: bash
         run: |

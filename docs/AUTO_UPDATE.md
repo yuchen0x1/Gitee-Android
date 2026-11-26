@@ -36,6 +36,7 @@ git push origin main v1.4.2
 
 - 校验标签版本与 `pubspec.yaml` 一致；
 - 使用 Android release keystore 构建通用 APK、分架构 APK 和 AAB；
+- 验证所有 APK 的签名，并要求证书指纹与既有正式证书一致；
 - 生成 `SHA256SUMS.txt`；
 - 将安装包和校验文件发布到 GitHub Release。
 
@@ -60,5 +61,5 @@ git push origin main v1.4.2
 - Android 系统可能要求用户开启“允许安装未知来源应用”；应用不能绕过系统确认。
 - GitHub Release 资产必须带 `digest` 或 `SHA256SUMS.txt`，否则客户端会拒绝安装。
 - 当前不支持后台静默下载、断点续传和自动重启；下载在更新对话框中进行。
-- APK 必须使用与已安装版本兼容的 release 签名，否则 Android 会拒绝覆盖安装。工作流要求从 GitHub Secrets 注入正式签名。
+- APK 必须使用与已安装版本兼容的 release 签名，否则 Android 会拒绝覆盖安装。工作流要求从 GitHub Secrets 注入正式签名，并在发布前验证 APK 签名和证书指纹。
 - 本项目不恢复 Windows、macOS 或 iOS 更新流程。

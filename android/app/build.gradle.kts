@@ -72,7 +72,7 @@ android {
     buildTypes {
         release {
             if (hasCompleteReleaseSigning) {
-                signingConfigs.getByName("release")
+                signingConfig = signingConfigs.getByName("release")
             }
         }
     }
