@@ -86,6 +86,71 @@ void main() {
       await tester.pumpWidget(const SizedBox());
       await tester.pump(const Duration(seconds: 1));
     });
+
+    testWidgets('$kind delete failure after leaving the detail page is ignored',
+        (tester) async {
+      final deletion = Completer<http.Response>();
+      var deleteStarted = false;
+      GiteeApi.setClientForTest(ApiClient(
+        token: 'a',
+        client: MockClient((request) async {
+          final path = request.url.path;
+          if (request.method == 'DELETE') {
+            expect(path,
+                endsWith('/${kind == 'issue' ? 'issues' : 'pulls'}/comments/7'));
+            deleteStarted = true;
+            return deletion.future;
+          }
+          if (path.endsWith('/issues/1') || path.endsWith('/pulls/1')) {
+            return http.Response(
+                '{"number":1,"title":"Details","state":"open"}', 200);
+          }
+          if (path.endsWith('/issues/1/comments') ||
+              path.endsWith('/pulls/1/comments')) {
+            return http.Response('[{"id":7,"body":"comment to delete"}]', 200);
+          }
+          return http.Response('[]', 200);
+        }),
+      ));
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(MaterialApp(
+        navigatorKey: navigator,
+        home: Scaffold(
+          body: Builder(builder: (context) {
+            return TextButton(
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => kind == 'issue'
+                    ? const IssueDetailPage(owner: 'o', repo: 'r', number: '1')
+                    : const PullRequestDetailPage(
+                        owner: 'o', repo: 'r', number: 1),
+              )),
+              child: const Text('open'),
+            );
+          }),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      final commentMenu = find.byType(PopupMenuButton<String>).last;
+      await tester.ensureVisible(commentMenu);
+      await tester.tap(commentMenu);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('删除评论'));
+      await tester.pumpAndSettle();
+      expect(deleteStarted, isTrue);
+
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+      expect(find.text('open'), findsOneWidget);
+      deletion.complete(http.Response('{"message":"server error"}', 500));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(find.text('open'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
+    });
   }
 
   testWidgets('AI completion after dismissing its spinner keeps the issue open',

@@ -316,6 +316,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
   }
 
   void _showMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));

@@ -6,7 +6,7 @@
 
 1. 应用启动后和「我的 → 检查更新」会请求公开 Release。
 2. REST API 不可用时，版本检查回退到 GitHub 发布页；更新下载仍只接受 GitHub HTTPS 资产地址。
-3. Android 通用 APK 下载到应用临时目录，界面显示真实进度和速度，并在失败时最多重试 3 次。
+3. Android 通用 APK 下载到各次请求独立的应用临时目录，界面显示真实进度和速度；总计最多尝试 3 次，响应正文连续 60 秒没有数据时按失败处理，最终失败会删除本次未完成的安装包。
 4. 安装前校验资产大小和 SHA-256。校验值来自 GitHub Release asset 的 `digest`，或同一 Release 中的 `SHA256SUMS.txt`。
 5. 校验通过后通过 Android 系统安装器启动安装。普通应用不能静默安装，用户需要在系统界面确认。
 
@@ -35,10 +35,13 @@ git push origin main v1.4.2
 `.github/workflows/release.yml` 会：
 
 - 校验标签版本与 `pubspec.yaml` 一致；
+- 在构建前运行 Python 测试、Flutter 静态分析和 Flutter 回归测试，失败时停止发布；
 - 使用 Android release keystore 构建通用 APK、分架构 APK 和 AAB；
 - 验证所有 APK 的签名，并要求证书指纹与既有正式证书一致；
 - 生成 `SHA256SUMS.txt`；
 - 将安装包和校验文件发布到 GitHub Release。
+
+CI 和 Release 的临时 Actions 构建附件保留 7 天；公开 Release 附件不受该保留期影响。
 
 正式发布需要在 GitHub Actions 配置：
 

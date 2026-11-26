@@ -437,6 +437,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   }
 
   void _showMessage(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
