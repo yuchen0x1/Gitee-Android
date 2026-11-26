@@ -84,6 +84,7 @@ void main() {
       expect(find.text('stale'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
     });
   }
 
@@ -129,6 +130,7 @@ void main() {
       expect(find.text('summary'), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
     }, () => MockClient((request) {
       expect(request.body, contains('Issue description'));
       return response.future;
