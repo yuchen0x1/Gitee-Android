@@ -131,7 +131,11 @@ void main() {
       ));
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      final commentMenu = find.byType(PopupMenuButton<String>).last;
+      final commentMenu = find.descendant(
+        of: find.byType(RefreshIndicator),
+        matching: find.byType(PopupMenuButton<String>),
+      );
+      expect(commentMenu, findsOneWidget);
       await tester.ensureVisible(commentMenu);
       await tester.tap(commentMenu);
       await tester.pumpAndSettle();
