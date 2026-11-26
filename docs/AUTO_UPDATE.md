@@ -18,7 +18,7 @@
 
 ```bash
 flutter pub get
-flutter analyze
+flutter analyze --no-fatal-infos
 flutter test
 flutter build apk --release
 flutter build apk --release --split-per-abi
