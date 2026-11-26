@@ -18,8 +18,8 @@ jobs:
       - run: python3 -m unittest discover -s test -p "*_test.py"
       - run: flutter analyze
       - run: flutter test
-      - run: flutter build apk
+      - run: flutter build apk --debug
       - uses: actions/upload-artifact@v7
         with:
-          name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: app-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk

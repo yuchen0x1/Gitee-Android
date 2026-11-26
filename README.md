@@ -232,7 +232,7 @@ Android 的生物识别能力要求宿主继承 `FlutterFragmentActivity`，并�
 
 仓库内置两套 GitHub Actions 工作流（`.github/workflows/`）：
 
-- **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 APK。
+- **ci.yml**：`push` 时触发。Linux 上执行 `flutter analyze`、`flutter test` 并构建 Android Debug APK；正式签名包仅由发布工作流生成。
 - **release.yml**：推送 `v*` 标签（或手动触发）时运行。先校验标签与 `pubspec.yaml` 版本一致，然后构建 Android（通用 / 分架构 APK + AAB），并使用 `docs/releases/release-notes.md` 中对应版本的说明发布 Release；缺少版本说明时停止发布。
 
 发布产物统一在仓库的 [Releases](https://github.com/yuchen0x1/Gitee-Android/releases) 页面下载。

@@ -9,7 +9,7 @@ on:
       release_tag:
         description: 'Git tag to publish'
         required: true
-        default: 'v1.4.2'
+        default: 'v1.4.4'
 
 permissions:
   contents: write
