@@ -14,9 +14,9 @@ Gitee Client 把 Gitee Open API v5 的常用协作能力搬到手机上。如果
 
 <!-- github-release:start -->
 
-**[v1.4.4](https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.4.4)** · 2026-11-26
+**[v1.4.5](https://github.com/yuchen0x1/Gitee-Android/releases/tag/v1.4.5)** · 2026-11-26
 
-本版为仓库维护更新：补齐构建产物的忽略规则，清理重复的未发布日志，并修复普通 CI 的分析与构建配置。应用功能和本地数据格式没有变化。
+本版修复仓库搜索、目录导航、Issue / PR 刷新、AI 摘要和 Android 在线更新中的异常场景，并加强账号切换时的会话隔离及历史明文凭证清理。应用仍仅发布 Android 版本，配置与数据格式保持兼容。
 
 [全部发行记录](https://github.com/yuchen0x1/Gitee-Android/releases)
 
