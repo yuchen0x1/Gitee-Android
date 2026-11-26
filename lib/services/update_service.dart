@@ -16,7 +16,11 @@ import '../models/release.dart';
 class UpdateService {
   static final shared = UpdateService();
 
-  UpdateService({http.Client? client}) : _client = client ?? http.Client();
+  UpdateService({
+    http.Client? client,
+    Duration downloadInactivityTimeout = const Duration(seconds: 60),
+  }) : _client = client ?? http.Client(),
+        _downloadInactivityTimeout = downloadInactivityTimeout;
 
   static const repositoryOwner = 'yuchen0x1';
   static const repositoryName = 'Gitee-Android';
@@ -42,10 +46,11 @@ class UpdateService {
   static const _requestUserAgent = 'Gitee-Client-Update-Checker';
 
   final http.Client _client;
+  final Duration _downloadInactivityTimeout;
   AppUpdate? _cachedUpdate;
   String? _cachedForVersion;
   DateTime? _lastCheckedAt;
-  Future<AppUpdate?>? _checking;
+  final Map<String, Future<AppUpdate?>> _checking = {};
 
   static const cacheDuration = Duration(minutes: 10);
 
@@ -61,11 +66,11 @@ class UpdateService {
         DateTime.now().difference(lastChecked) < cacheDuration) {
       return _cachedUpdate;
     }
-    final pending = _checking;
+    final pending = _checking[version];
     if (pending != null) return pending;
 
     final future = _checkForUpdate(version);
-    _checking = future;
+    _checking[version] = future;
     try {
       final result = await future;
       _cachedUpdate = result;
@@ -73,7 +78,7 @@ class UpdateService {
       _lastCheckedAt = DateTime.now();
       return result;
     } finally {
-      _checking = null;
+      _checking.remove(version);
     }
   }
 
@@ -119,9 +124,13 @@ class UpdateService {
 
     final finalUrl = response.request?.url.toString() ?? '';
     final page = utf8.decode(response.bodyBytes);
-    final match =
-        RegExp(r'/releases/tag/([^"?#/<]+)').firstMatch('$finalUrl\n$page');
-    if (match == null) return null;
+    final match = RegExp(
+      '/$repositoryOwner/$repositoryName/releases/tag/([^"?#/<]+)',
+      caseSensitive: false,
+    ).firstMatch('$finalUrl\n$page');
+    if (match == null) {
+      throw const UpdateCheckException('更新服务返回了无效发布页');
+    }
     final version = Uri.decodeComponent(match.group(1)!);
     return _newerReleaseOrNull(
       AppUpdate(
@@ -157,6 +166,9 @@ class UpdateService {
     void Function(int received, int total, double? bytesPerSecond)? onProgress,
     int maxAttempts = 3,
   }) async {
+    if (maxAttempts < 1) {
+      throw ArgumentError.value(maxAttempts, 'maxAttempts', '必须至少尝试一次');
+    }
     if (!asset.name.toLowerCase().endsWith('.apk')) {
       throw const UpdateDownloadException('发布资产不是 Android APK');
     }
@@ -165,33 +177,40 @@ class UpdateService {
     if (expected == null) {
       throw const UpdateDownloadException('发布资产缺少 SHA-256 校验值');
     }
-    final directory = await getTemporaryDirectory();
+    final temporaryDirectory = await getTemporaryDirectory();
+    final directory = await temporaryDirectory.createTemp('gitee-update-');
     final safeName = asset.name.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
     final file = File('${directory.path}/$safeName');
     Object? lastError;
-    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        await _downloadToFile(uri, file, onProgress: onProgress);
-        final actual = await _sha256File(file);
-        if (actual != expected) {
+    try {
+      for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await _downloadToFile(uri, file, onProgress: onProgress);
+          final actual = await _sha256File(file);
+          if (actual != expected) {
+            throw const UpdateDownloadException('下载文件 SHA-256 校验失败');
+          }
+          if (asset.size > 0 && await file.length() != asset.size) {
+            throw const UpdateDownloadException('下载文件大小校验失败');
+          }
+          return file;
+        } catch (error) {
+          lastError = error;
           await _deleteQuietly(file);
-          throw const UpdateDownloadException('下载文件 SHA-256 校验失败');
-        }
-        if (asset.size > 0 && await file.length() != asset.size) {
-          await _deleteQuietly(file);
-          throw const UpdateDownloadException('下载文件大小校验失败');
-        }
-        return file;
-      } catch (error) {
-        lastError = error;
-        if (attempt < maxAttempts) {
-          await Future<void>.delayed(Duration(milliseconds: 300 * attempt));
+          if (attempt < maxAttempts) {
+            await Future<void>.delayed(Duration(milliseconds: 300 * attempt));
+          }
         }
       }
+      throw lastError is UpdateDownloadException
+          ? lastError
+          : UpdateDownloadException('下载更新失败：$lastError');
+    } catch (_) {
+      try {
+        await directory.delete(recursive: true);
+      } catch (_) {}
+      rethrow;
     }
-    throw lastError is UpdateDownloadException
-        ? lastError
-        : UpdateDownloadException('下载更新失败：$lastError');
   }
 
   Future<String?> _expectedSha256(
@@ -234,7 +253,7 @@ class UpdateService {
       ..headers['Accept'] = 'application/vnd.github+json'
       ..headers['User-Agent'] = _requestUserAgent;
     final response =
-        await _client.send(request).timeout(const Duration(seconds: 60));
+        await _client.send(request).timeout(_downloadInactivityTimeout);
     final finalHost = response.request?.url.host.toLowerCase() ?? '';
     if (!_allowedDownloadHosts.contains(finalHost)) {
       throw const UpdateDownloadException('下载重定向地址不受信任');
@@ -247,7 +266,8 @@ class UpdateService {
     final started = DateTime.now();
     final sink = file.openWrite();
     try {
-      await for (final chunk in response.stream) {
+      await for (final chunk
+          in response.stream.timeout(_downloadInactivityTimeout)) {
         sink.add(chunk);
         received += chunk.length;
         final elapsed = DateTime.now().difference(started).inMilliseconds;

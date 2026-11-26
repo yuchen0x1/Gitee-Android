@@ -45,6 +45,8 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   bool _actionInFlight = false;
   bool _hasMore = true;
   int _page = 1;
+  int _loadGeneration = 0;
+  bool _summaryInFlight = false;
   String? _error;
   List<PullRequest> _relatedPRs = [];
 
@@ -56,12 +58,11 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   }
 
   Future<void> _load({bool refresh = false}) async {
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _comments.clear();
-    }
-    if (_issue == null) setState(() => _loading = true);
+    final generation = ++_loadGeneration;
+    setState(() {
+      _loading = true;
+      _commentsLoading = false;
+    });
     try {
       final issue = await GiteeApi.getIssueDetail(
         widget.owner,
@@ -72,22 +73,24 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
         widget.owner,
         widget.repo,
         widget.number,
-        page: _page,
+        page: 1,
         perPage: 20,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _loading = false;
         _error = null;
         _issue = issue;
         _commentsLoading = false;
-        _comments.addAll(comments);
-        if (comments.length < 20) _hasMore = false;
-        _page++;
+        _comments
+          ..clear()
+          ..addAll(comments);
+        _hasMore = comments.length >= 20;
+        _page = 2;
       });
-      unawaited(_loadRelatedPRs());
+      unawaited(_loadRelatedPRs(generation));
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _loading = false;
           _error = friendlyError(e);
@@ -97,37 +100,41 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   }
 
   Future<void> _loadMore() async {
-    if (_commentsLoading || !_hasMore) return;
+    if (_loading || _commentsLoading || !_hasMore) return;
+    final generation = _loadGeneration;
+    final page = _page;
     setState(() => _commentsLoading = true);
     try {
       final comments = await GiteeApi.getIssueComments(
         widget.owner,
         widget.repo,
         widget.number,
-        page: _page,
+        page: page,
         perPage: 20,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _commentsLoading = false;
         _comments.addAll(comments);
         if (comments.length < 20) _hasMore = false;
-        _page++;
+        _page = page + 1;
       });
     } catch (_) {
-      if (mounted) setState(() => _commentsLoading = false);
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _commentsLoading = false);
+      }
     }
   }
 
   /// 关联 PR 属于增强信息，失败时不展示，不影响主体内容。
-  Future<void> _loadRelatedPRs() async {
+  Future<void> _loadRelatedPRs(int generation) async {
     try {
       final prs = await GiteeApi.getIssuePullRequests(
         widget.owner,
         widget.number,
         repo: widget.repo,
       );
-      if (!mounted || prs.isEmpty) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _relatedPRs = prs);
     } catch (_) {
       // 关联 PR 接口异常时保持空列表。
@@ -161,22 +168,28 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
 
   Future<void> _aiSummarize() async {
     final issue = _issue;
-    if (issue == null) return;
-    showDialog(
+    if (issue == null || _summaryInFlight) return;
+    _summaryInFlight = true;
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final loadingRoute = DialogRoute<void>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+    unawaited(navigator.push(loadingRoute));
     final commentsText = _comments
         .take(10)
         .map((c) => '${c.user?.login ?? ""}：${c.body}')
         .join('\n');
     final text =
         '${issue.title}\n\n${issue.state == "open" ? "状态：开放" : "状态：已关闭"}'
+        '\n\n${issue.body}'
         '\n\n${commentsText.isEmpty ? "暂无评论" : commentsText}';
     final summary = await AiSummary.summarize(text, title: issue.title);
+    _summaryInFlight = false;
+    if (!loadingRoute.isActive) return;
+    navigator.removeRoute(loadingRoute);
     if (!mounted) return;
-    Navigator.pop(context);
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(

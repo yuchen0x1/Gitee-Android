@@ -26,22 +26,25 @@ class _LoginPageState extends State<LoginPage> {
     }
     setState(() => _loading = true);
     GiteeApi.setToken(token);
+    final session = GiteeApi.sessionGeneration;
     try {
       final user = await GiteeApi.getCurrentUser();
+      if (session != GiteeApi.sessionGeneration) return;
       await AuthStore.writeToken(token);
+      if (session != GiteeApi.sessionGeneration) return;
       await AuthStore.addAccount(
         username: user.login,
         token: token,
         avatarUrl: user.avatarUrl,
       );
-      if (!mounted) return;
+      if (!mounted || session != GiteeApi.sessionGeneration) return;
       _showMsg('登录成功：${user.name}');
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const HomePage()),
         (route) => false,
       );
     } catch (e) {
-      GiteeApi.clearToken();
+      if (session == GiteeApi.sessionGeneration) GiteeApi.clearToken();
       if (mounted) _showMsg(e.toString());
     } finally {
       if (mounted) setState(() => _loading = false);

@@ -69,6 +69,7 @@ class _UpdateDialogState extends State<_UpdateDialog> {
           });
         },
       );
+      if (!mounted) return;
       final installResult = await UpdateInstaller.installApk(file);
       if (installResult == UpdateInstallResult.permissionRequired) {
         if (!mounted) return;

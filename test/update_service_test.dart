@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -137,6 +138,38 @@ void main() {
     expect(update?.htmlUrl, UpdateService.githubLatestReleasePageUrl);
   });
 
+  test('网页兜底忽略正文里其他仓库的版本链接', () async {
+    final service = UpdateService(
+      client: MockClient((request) async {
+        if (request.url.host == 'api.github.com') {
+          return http.Response('', 403);
+        }
+        return http.Response(
+          '<a href="/someone/another-project/releases/tag/v99.0.0">'
+          '<a href="/yuchen0x1/Gitee-Android/releases/tag/v2.1.0">',
+          200,
+        );
+      }),
+    );
+    final update = await service.checkForUpdate(currentVersion: '2.0.0');
+    expect(update?.version, 'v2.1.0');
+  });
+
+  test('网页兜底无法识别版本时报告检查失败而非已是最新', () async {
+    final service = UpdateService(
+      client: MockClient((request) async {
+        return http.Response(
+          request.url.host == 'api.github.com' ? '' : '<html>unavailable</html>',
+          request.url.host == 'api.github.com' ? 403 : 200,
+        );
+      }),
+    );
+    await expectLater(
+      service.checkForUpdate(currentVersion: '2.0.0'),
+      throwsA(isA<UpdateCheckException>()),
+    );
+  });
+
   test('GitHub 通道不发送用户 Token', () async {
     late http.Request captured;
     final service = UpdateService(
@@ -211,6 +244,29 @@ void main() {
     final update = await service.checkForUpdate(currentVersion: '2.0.0');
     expect(calls, 2);
     expect(update?.version, 'v2.1.0');
+  });
+
+  test('不同当前版本的并发检查不会复用已过滤的结果', () async {
+    final responseReady = Completer<void>();
+    var calls = 0;
+    final service = UpdateService(
+      client: MockClient((request) async {
+        calls++;
+        await responseReady.future;
+        return http.Response(
+          jsonEncode(releaseJson),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    final olderVersion = service.checkForUpdate(currentVersion: '2.0.0');
+    final newerVersion = service.checkForUpdate(currentVersion: '3.0.0');
+    responseReady.complete();
+
+    expect((await olderVersion)?.version, 'v2.1.0');
+    expect(await newerVersion, isNull);
+    expect(calls, 2);
   });
 
   test('GitHub API 成功时不再访问网页兜底', () async {

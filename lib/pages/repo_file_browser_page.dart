@@ -163,11 +163,15 @@ class _RepoFileBrowserPageState extends State<RepoFileBrowserPage> {
   }
 
   /// 直接跳转到路径层级中的某一级目录。
-  void _jumpTo(int segmentIndex) {
-    if (segmentIndex < 0 || segmentIndex >= _segmentCount) return;
-    final target = _segments.take(segmentIndex + 1).join('/');
+  void _jumpTo(int segmentCount) {
+    if (segmentCount < 0 || segmentCount > _segmentCount) return;
+    final target = _segments.take(segmentCount).join('/');
     if (target == _path) return;
     setState(() {
+      _history.removeWhere((entry) =>
+          target.isEmpty ||
+          entry == target ||
+          (entry.isNotEmpty && !target.startsWith('$entry/')));
       _path = target;
       _files = [];
       _error = null;

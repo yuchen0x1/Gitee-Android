@@ -45,6 +45,7 @@ class ApiClient {
   }
 
   String? get token => _token;
+  int get sessionGeneration => _sessionGeneration;
 
   void clearCache() {
     // In-flight requests cannot be cancelled reliably across all clients.

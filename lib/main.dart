@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth/auth_store.dart';
 import 'auth/app_lock.dart';
+import 'auth/session_expiry_handler.dart';
 import 'api/gitee_api.dart';
 import 'pages/home_page.dart';
 import 'pages/login_page.dart';
@@ -15,24 +18,22 @@ import 'utils/deep_link.dart';
 import 'i18n/app_localizations.dart';
 
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
-bool _handlingUnauthorized = false;
+final _sessionExpiryHandler = SessionExpiryHandler(
+  currentSession: () => GiteeApi.sessionGeneration,
+  clearCredentials: AuthStore.clear,
+  clearOfflineCache: OfflineCache.clear,
+  onExpired: () {
+    rootNavigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+      (route) => false,
+    );
+  },
+);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  GiteeApi.onUnauthorized = () async {
-    if (_handlingUnauthorized) return;
-    _handlingUnauthorized = true;
-    await AuthStore.clear();
-    await OfflineCache.clear();
-    GiteeApi.clearToken();
-    final navigator = rootNavigatorKey.currentState;
-    if (navigator != null) {
-      await navigator.pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const LoginPage()),
-        (route) => false,
-      );
-    }
-    _handlingUnauthorized = false;
+  GiteeApi.onUnauthorized = () {
+    unawaited(_sessionExpiryHandler.handle());
   };
   final settings = await AppSettingsProvider.load();
   await AppLock.load();

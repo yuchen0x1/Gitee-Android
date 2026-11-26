@@ -37,6 +37,7 @@ class GiteeApi {
   }
 
   static String? get token => _client.token;
+  static int get sessionGeneration => _client.sessionGeneration;
 
   static void clearCache() => _client.clearCache();
 

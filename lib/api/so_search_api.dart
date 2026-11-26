@@ -84,7 +84,17 @@ class SoSearchApi {
             ? map['fields']
             : const <String, dynamic>{})
         as Map<dynamic, dynamic>;
-    final fullName = _field(fields, 'title');
+    final title = _field(fields, 'title');
+    final htmlUrl = _field(fields, 'url');
+    final uri = Uri.tryParse(htmlUrl);
+    final urlParts = uri != null &&
+            uri.scheme == 'https' &&
+            uri.host.toLowerCase() == 'gitee.com'
+        ? uri.pathSegments.where((part) => part.isNotEmpty).toList()
+        : const <String>[];
+    // The indexed owner field is the creator, which may differ from an
+    // organization's repository namespace. Route using the canonical URL.
+    final fullName = urlParts.length == 2 ? urlParts.join('/') : title;
     final slash = fullName.indexOf('/');
     final langs = fields['langs'];
     final language = langs is List && langs.isNotEmpty ? langs.first : '';
@@ -96,14 +106,16 @@ class SoSearchApi {
         final desc = _field(fields, 'description');
         return desc.isEmpty ? '暂无描述' : desc;
       }(),
-      ownerLogin: _field(fields, 'owner.path.keyword'),
+      ownerLogin: slash > 0
+          ? fullName.substring(0, slash)
+          : _field(fields, 'owner.path.keyword'),
       ownerAvatar: '',
       stars: _fieldInt(fields, 'count.star'),
       forks: _fieldInt(fields, 'count.fork'),
       watchers: 0,
       language: language.toString(),
       isPrivate: false,
-      htmlUrl: _field(fields, 'url'),
+      htmlUrl: htmlUrl,
       updatedAt: _field(fields, 'last_push_at'),
     );
   }

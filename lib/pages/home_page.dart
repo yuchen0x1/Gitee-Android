@@ -30,7 +30,6 @@ class _HomePageState extends State<HomePage> {
   User? _user;
   int _unreadCount = 0;
   int _notificationCountGeneration = 0;
-  bool _handlingUnauthorized = false;
   bool _automaticUpdateCheckStarted = false;
 
   @override
@@ -74,17 +73,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _handleUnauthorized() {
-    if (!mounted || _handlingUnauthorized) return;
-    _handlingUnauthorized = true;
-    unawaited(AuthStore.clear());
-    GiteeApi.clearToken();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
-  }
-
   Future<void> _refresh() async {
     await Future.wait([_loadUser(), _loadNotificationCount()]);
   }
@@ -100,27 +88,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadUser() async {
+    final session = GiteeApi.sessionGeneration;
+    final token = GiteeApi.token;
     try {
       final user = await GiteeApi.getCurrentUser();
-      if (mounted) {
+      if (mounted && session == GiteeApi.sessionGeneration) {
         setState(() => _user = user);
         // 登录后自动保存到多账号列表
-        await AuthStore.addAccount(
-          username: user.login,
-          token: GiteeApi.token ?? '',
-          avatarUrl: user.avatarUrl,
-        );
+        if (token != null && token.isNotEmpty) {
+          await AuthStore.addAccount(
+            username: user.login,
+            token: token,
+            avatarUrl: user.avatarUrl,
+          );
+        }
       }
-    } catch (_) {
-      if (mounted && GiteeApi.token == null) _handleUnauthorized();
-    }
+    } catch (_) {}
   }
 
   Future<void> _logout() async {
+    if (GiteeApi.token == null) return;
+    GiteeApi.clearToken();
+    final session = GiteeApi.sessionGeneration;
     await AuthStore.clear();
     await OfflineCache.clear();
-    GiteeApi.clearToken();
-    if (mounted) {
+    if (mounted && session == GiteeApi.sessionGeneration) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
         (route) => false,

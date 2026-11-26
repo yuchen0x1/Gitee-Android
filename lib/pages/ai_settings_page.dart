@@ -22,9 +22,9 @@ class AiSettingsPage extends StatefulWidget {
       if (legacyKey != null && legacyKey.isNotEmpty) {
         key = legacyKey;
         await _secureStorage.write(key: _aiKeySecretKey, value: legacyKey);
-        await prefs.remove('ai_api_key');
       }
     }
+    await prefs.remove('ai_api_key');
     AiSummary.apiKey = (key != null && key.isNotEmpty) ? key : null;
     final url = prefs.getString('ai_base_url') ?? '';
     if (url.isNotEmpty) AiSummary.baseUrl = url;

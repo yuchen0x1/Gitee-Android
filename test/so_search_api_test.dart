@@ -57,7 +57,7 @@ void main() {
       expect(repos, hasLength(2));
       expect(repos[0].fullName, 'dromara/easy-query');
       expect(repos[0].name, 'easy-query');
-      expect(repos[0].ownerLogin, 'yu199195');
+      expect(repos[0].ownerLogin, 'dromara');
       expect(repos[0].stars, 509);
       expect(repos[0].forks, 98);
       expect(repos[0].language, 'Java');
@@ -67,8 +67,32 @@ void main() {
       // 字段缺失 / 空数组时兜底
       expect(repos[1].stars, 50);
       expect(repos[1].description, '暂无描述');
-      expect(repos[1].ownerLogin, isEmpty);
+      expect(repos[1].ownerLogin, 'simple-robot');
       expect(repos[1].language, isEmpty);
+    });
+
+    test('组织仓库使用 URL 路径而不是显示名称或创建者作为导航目标', () async {
+      final api = SoSearchApi(
+        client: MockClient((_) async => http.Response('''
+{
+  "hits": {
+    "hits": [{
+      "_id": "42",
+      "fields": {
+        "title": ["Organization/Display Name"],
+        "url": ["https://gitee.com/actual-org/repository-path/"],
+        "owner.path.keyword": ["individual-creator"]
+      }
+    }]
+  }
+}
+''', 200)),
+      );
+
+      final repo = (await api.searchRepos('repository')).single;
+      expect(repo.fullName, 'actual-org/repository-path');
+      expect(repo.ownerLogin, 'actual-org');
+      expect(repo.name, 'repository-path');
     });
 
     test('非 200 响应抛出 GiteeApiException', () async {

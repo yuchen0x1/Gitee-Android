@@ -12,30 +12,42 @@ class AuthStore {
     aOptions: AndroidOptions(resetOnError: true),
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
+  static Future<void> _pendingTokenOperation = Future<void>.value();
 
-  static Future<String?> readToken() async {
-    final secureToken = await _secureStorage.read(key: _tokenKey);
-    if (secureToken != null && secureToken.isNotEmpty) return secureToken;
-
-    final prefs = await SharedPreferences.getInstance();
-    final legacyToken = prefs.getString(_tokenKey);
-    if (legacyToken == null || legacyToken.isEmpty) return null;
-    await writeToken(legacyToken);
-    await prefs.remove(_tokenKey);
-    return legacyToken;
+  static Future<T> _withToken<T>(Future<T> Function() operation) {
+    final next = _pendingTokenOperation.then<T>((_) => operation());
+    // A failed operation must not block later login or logout attempts.
+    _pendingTokenOperation = next.then<void>((_) {}, onError: (Object _) {});
+    return next;
   }
+
+  static Future<String?> readToken() => _withToken(() async {
+        final secureToken = await _secureStorage.read(key: _tokenKey);
+        final prefs = await SharedPreferences.getInstance();
+        if (secureToken != null && secureToken.isNotEmpty) {
+          // A previous migration may have saved securely before cleanup finished.
+          await prefs.remove(_tokenKey);
+          return secureToken;
+        }
+
+        final legacyToken = prefs.getString(_tokenKey);
+        if (legacyToken == null || legacyToken.isEmpty) return null;
+        await _secureStorage.write(key: _tokenKey, value: legacyToken);
+        await prefs.remove(_tokenKey);
+        return legacyToken;
+      });
 
   static Future<void> writeToken(String token) =>
-      _secureStorage.write(key: _tokenKey, value: token);
+      _withToken(() => _secureStorage.write(key: _tokenKey, value: token));
 
-  static Future<void> clear() async {
-    await _secureStorage.delete(key: _tokenKey);
-    // 旧版本遗留的 OAuth 键，登出时一并清理。
-    await _secureStorage.delete(key: 'gitee_oauth_token');
-    await _secureStorage.delete(key: 'gitee_oauth_state');
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_tokenKey);
-  }
+  static Future<void> clear() => _withToken(() async {
+        await _secureStorage.delete(key: _tokenKey);
+        // 旧版本遗留的 OAuth 键，登出时一并清理。
+        await _secureStorage.delete(key: 'gitee_oauth_token');
+        await _secureStorage.delete(key: 'gitee_oauth_state');
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(_tokenKey);
+      });
 
   // ---------- 多账号管理 ----------
 

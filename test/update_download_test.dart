@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -26,7 +27,7 @@ void main() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, null);
     for (final file in directory.listSync()) {
-      await file.delete();
+      await file.delete(recursive: true);
     }
     await directory.delete();
   });
@@ -114,6 +115,74 @@ void main() {
     );
     expect(calls, 2);
     expect(await file.readAsBytes(), bytes);
+  });
+
+  test('failed response stream removes its partial APK and directory', () async {
+    final update = release(sha256.convert(bytes).toString());
+    Stream<List<int>> failingBody() async* {
+      yield bytes.sublist(0, 4);
+      throw const SocketException('connection interrupted');
+    }
+
+    final service = UpdateService(
+      client: MockClient.streaming((request, body) async {
+        return http.StreamedResponse(failingBody(), 200, request: request);
+      }),
+    );
+    await expectLater(
+      service.downloadApk(update, asset: update.assets.single, maxAttempts: 1),
+      throwsA(isA<UpdateDownloadException>()),
+    );
+    expect(directory.listSync(), isEmpty);
+  });
+
+  test('stalled response body times out and removes its partial APK', () async {
+    final update = release(sha256.convert(bytes).toString());
+    final body = StreamController<List<int>>();
+    addTearDown(body.close);
+    body.add(bytes.sublist(0, 4));
+    final service = UpdateService(
+      downloadInactivityTimeout: const Duration(milliseconds: 30),
+      client: MockClient.streaming((request, _) async {
+        return http.StreamedResponse(body.stream, 200, request: request);
+      }),
+    );
+    await expectLater(
+      service.downloadApk(update, asset: update.assets.single, maxAttempts: 1),
+      throwsA(isA<UpdateDownloadException>()),
+    );
+    expect(directory.listSync(), isEmpty);
+  });
+
+  test('concurrent APK downloads have independent verified files', () async {
+    final update = release(sha256.convert(bytes).toString());
+    final service = UpdateService(
+      client: MockClient(
+        (request) async => http.Response.bytes(bytes, 200, request: request),
+      ),
+    );
+    final files = await Future.wait([
+      service.downloadApk(update, asset: update.assets.single, maxAttempts: 1),
+      service.downloadApk(update, asset: update.assets.single, maxAttempts: 1),
+    ]);
+    expect(files[0].path, isNot(files[1].path));
+    for (final file in files) {
+      expect(await file.readAsBytes(), bytes);
+    }
+  });
+
+  test('zero download attempts fails before creating temporary files', () async {
+    final update = release(sha256.convert(bytes).toString());
+    final service = UpdateService(
+      client: MockClient((_) async {
+        fail('invalid attempt count must not send a request');
+      }),
+    );
+    await expectLater(
+      service.downloadApk(update, asset: update.assets.single, maxAttempts: 0),
+      throwsArgumentError,
+    );
+    expect(directory.listSync(), isEmpty);
   });
 
   test(

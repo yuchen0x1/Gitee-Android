@@ -46,6 +46,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
   bool _actionInFlight = false;
   bool _hasMore = true;
   int _page = 1;
+  int _loadGeneration = 0;
   String? _error;
   List<Issue> _relatedIssues = [];
 
@@ -57,12 +58,11 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
   }
 
   Future<void> _load({bool refresh = false}) async {
-    if (refresh) {
-      _page = 1;
-      _hasMore = true;
-      _commits.clear();
-    }
-    if (_pr == null) setState(() => _loading = true);
+    final generation = ++_loadGeneration;
+    setState(() {
+      _loading = true;
+      _commitsLoading = false;
+    });
     try {
       final pr = await GiteeApi.getPullRequestDetail(
         widget.owner,
@@ -74,7 +74,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
           widget.owner,
           widget.repo,
           widget.number,
-          page: _page,
+          page: 1,
           perPage: 20,
         ),
         GiteeApi.getPullRequestComments(
@@ -85,7 +85,7 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
         GiteeApi.getPullRequestFiles(widget.owner, widget.repo, widget.number),
       ]);
       final commits = results[0] as List<Commit>;
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _loading = false;
         _error = null;
@@ -97,13 +97,15 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
           ..clear()
           ..addAll(results[2] as List<PullRequestFile>);
         _commitsLoading = false;
-        _commits.addAll(commits);
-        if (commits.length < 20) _hasMore = false;
-        _page++;
+        _commits
+          ..clear()
+          ..addAll(commits);
+        _hasMore = commits.length >= 20;
+        _page = 2;
       });
-      unawaited(_loadRelatedIssues());
+      unawaited(_loadRelatedIssues(generation));
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _loadGeneration) {
         setState(() {
           _loading = false;
           _error = friendlyError(e);
@@ -113,14 +115,14 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
   }
 
   /// 关联 Issue 属于增强信息，失败时不展示，不影响主体内容。
-  Future<void> _loadRelatedIssues() async {
+  Future<void> _loadRelatedIssues(int generation) async {
     try {
       final issues = await GiteeApi.getPullRequestIssues(
         widget.owner,
         widget.repo,
         widget.number,
       );
-      if (!mounted || issues.isEmpty) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() => _relatedIssues = issues);
     } catch (_) {
       // 关联 Issue 接口异常时保持空列表。
@@ -320,25 +322,29 @@ class _PullRequestDetailPageState extends State<PullRequestDetailPage> {
   }
 
   Future<void> _loadMore() async {
-    if (_commitsLoading || !_hasMore) return;
+    if (_loading || _commitsLoading || !_hasMore) return;
+    final generation = _loadGeneration;
+    final page = _page;
     setState(() => _commitsLoading = true);
     try {
       final commits = await GiteeApi.getPullRequestCommits(
         widget.owner,
         widget.repo,
         widget.number,
-        page: _page,
+        page: page,
         perPage: 20,
       );
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _commitsLoading = false;
         _commits.addAll(commits);
         if (commits.length < 20) _hasMore = false;
-        _page++;
+        _page = page + 1;
       });
     } catch (_) {
-      if (mounted) setState(() => _commitsLoading = false);
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _commitsLoading = false);
+      }
     }
   }
 

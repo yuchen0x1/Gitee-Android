@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -17,6 +18,18 @@ class AiSummary {
   /// 对一段文本生成简短中文摘要。
   static Future<String> summarize(String content, {String? title}) async {
     if (!isConfigured) return '请先在设置中配置 AI API Key';
+    final base = baseUrl.trim().replaceFirst(RegExp(r'/+$'), '');
+    final uri = Uri.tryParse(base.endsWith('/v1')
+        ? '$base/chat/completions'
+        : '$base/v1/chat/completions');
+    if (uri == null ||
+        (uri.scheme != 'https' && uri.scheme != 'http') ||
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment) {
+      return 'AI 接口地址无效，请在设置中检查 Base URL';
+    }
     final userMsg = title != null && title.isNotEmpty
         ? '标题：$title\n\n内容：$content'
         : content;
@@ -33,24 +46,37 @@ class AiSummary {
       'max_tokens': 300,
       'temperature': 0.3,
     });
-    final res = await http
-        .post(
-          Uri.parse('$baseUrl/v1/chat/completions'),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
-          },
-          body: body,
-        )
-        .timeout(const Duration(seconds: 30));
-    if (res.statusCode != 200) {
-      return 'AI 请求失败（${res.statusCode}）';
+    try {
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $apiKey',
+            },
+            body: body,
+          )
+          .timeout(const Duration(seconds: 30));
+      if (res.statusCode != 200) {
+        return 'AI 请求失败（${res.statusCode}）';
+      }
+      final data = jsonDecode(utf8.decode(res.bodyBytes));
+      final choices = data is Map ? data['choices'] : null;
+      if (choices is List && choices.isNotEmpty) {
+        final choice = choices.first;
+        final message = choice is Map ? choice['message'] : null;
+        final summary = message is Map ? message['content'] : null;
+        if (summary is String && summary.trim().isNotEmpty) {
+          return summary.trim();
+        }
+      }
+      return '无法解析 AI 响应';
+    } on TimeoutException {
+      return 'AI 请求超时，请稍后重试';
+    } on FormatException {
+      return '无法解析 AI 响应';
+    } catch (_) {
+      return 'AI 请求失败，请检查网络连接后重试';
     }
-    final data = jsonDecode(utf8.decode(res.bodyBytes));
-    final choices = data['choices'];
-    if (choices is List && choices.isNotEmpty) {
-      return choices[0]['message']?['content']?.toString().trim() ?? '无法生成摘要';
-    }
-    return '无法解析 AI 响应';
   }
 }
