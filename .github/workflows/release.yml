@@ -81,8 +81,9 @@ jobs:
           for apk in build/app/outputs/flutter-apk/*-release.apk; do
             "$APKSIGNER" verify --verbose --print-certs "$apk"
             cert_digest=$("$APKSIGNER" verify --print-certs "$apk" \
-              | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' \
+              | sed -n -E 's/^(Signer #1|V2 Signer): certificate SHA-256 digest: ([0-9a-fA-F]{64})$/\2/p' \
               | tr '[:upper:]' '[:lower:]')
+            test -n "$cert_digest"
             test "$cert_digest" = "$EXPECTED_CERT_SHA256"
           done
       - name: Prepare Android assets
