@@ -36,8 +36,9 @@
 
 ## 🧪 验证结果
 
+- GitHub Actions CI 已通过：静态分析、Python 标准库测试、Flutter 测试和 Android Debug APK 构建均成功。
 - 发布说明提取器的 Python 标准库测试：6 项通过。
-- GitHub Actions 发布流程会校验版本与说明，并且仅在 Android 签名 APK/AAB 构建成功后发布。
+- 已核验公开 APK：v1.4.1 使用正式证书，v1.4.0 使用 Debug 证书，v1.4.2、v1.4.3 缺少有效签名；v1.4.4 发布流程会验证 APK 签名和正式证书指纹。
 
 ## 🔄 升级与数据迁移
 
